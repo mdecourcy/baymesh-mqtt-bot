@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  meshtastic-stats-bot:
+    build: .
+    container_name: meshtastic-stats-bot
+    restart: unless-stopped
+    env_file:
+      - .env.heltec
+    volumes:
+      - ./meshtastic_stats.db:/app/meshtastic_stats.db
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    environment:
+      - MESHTASTIC_ENV_FILE=/app/.env.heltec
+    # Use the default CMD from Dockerfile (python main.py)
+
+
