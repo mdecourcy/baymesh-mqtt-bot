@@ -178,28 +178,60 @@ class SchedulerManager:
         # Format the broadcast message
         message = self._format_broadcast_message(stats)
 
-        try:
-            # Send to channel (channel_id is passed directly, not as node ID)
-            # The broadcast_channel value represents the channel index (0-7)
-            success = self._meshtastic_service.send_message_to_channel(
-                message=message,
-                channel_id=self._broadcast_channel
-            )
-
-            if success:
+        # Try sending with retries
+        max_retries = 3
+        retry_delay = 10  # seconds
+        
+        for attempt in range(1, max_retries + 1):
+            try:
                 self.logger.info(
-                    "Daily broadcast sent successfully to channel %d", self._broadcast_channel
+                    "Attempting to send daily broadcast to channel %d (attempt %d/%d)",
+                    self._broadcast_channel,
+                    attempt,
+                    max_retries
                 )
-            else:
-                self.logger.warning(
-                    "Daily broadcast failed for channel %d", self._broadcast_channel
+                
+                # Send to channel (channel_id is passed directly, not as node ID)
+                # The broadcast_channel value represents the channel index (0-7)
+                success = self._meshtastic_service.send_message_to_channel(
+                    message=message,
+                    channel_id=self._broadcast_channel,
+                    timeout=60
                 )
-        except Exception:
-            self.logger.error(
-                "Failed to send daily broadcast to channel %d",
-                self._broadcast_channel,
-                exc_info=True
-            )
+
+                if success:
+                    self.logger.info(
+                        "Daily broadcast sent successfully to channel %d on attempt %d",
+                        self._broadcast_channel,
+                        attempt
+                    )
+                    return  # Success, exit early
+                else:
+                    self.logger.warning(
+                        "Daily broadcast failed for channel %d on attempt %d",
+                        self._broadcast_channel,
+                        attempt
+                    )
+            except Exception as e:
+                self.logger.error(
+                    "Failed to send daily broadcast to channel %d on attempt %d: %s",
+                    self._broadcast_channel,
+                    attempt,
+                    str(e),
+                    exc_info=True
+                )
+            
+            # Wait before retrying (unless this was the last attempt)
+            if attempt < max_retries:
+                self.logger.info("Waiting %d seconds before retry...", retry_delay)
+                import time
+                time.sleep(retry_delay)
+        
+        self.logger.error(
+            "Daily broadcast failed after %d attempts to channel %d",
+            max_retries,
+            self._broadcast_channel
+        )
 
     def _format_broadcast_message(self, stats: dict) -> str:
         """Format daily stats into a broadcast message."""

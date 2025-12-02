@@ -150,9 +150,10 @@ def main():  # pragma: no cover - integration entry point
     command_manager.start()
     main_logger.info("Starting MQTT thread...")
     mqtt_thread = _start_mqtt_thread(mqtt_client)
-    # Attach MQTT client and scheduler to app state for health checks and admin endpoints
+    # Attach long-lived services to app state for health checks and admin endpoints
     app.state.mqtt_client = mqtt_client
     app.state.scheduler = scheduler
+    app.state.command_manager = command_manager
     main_logger.info("All services started")
 
     uvicorn_config = uvicorn.Config(

@@ -102,12 +102,28 @@ class StatsService:
         try:
             end = datetime.now(timezone.utc)
             start = end - timedelta(hours=24)
-            stats = self._aggregate_stats(start, end)
-            stats["start_time"] = start
-            stats["end_time"] = end
-            return stats
+            return self._aggregate_rolling_window(start, end, window_label="24h")
         except Exception as exc:
             self._raise_stats_error("get last 24h stats", exc)
+
+    def get_last_ndays_stats(self, days: int) -> Dict[str, Any]:
+        """
+        Aggregate stats for the last N days (rolling window).
+
+        The window is calculated as (now - days, now], not aligned to calendar
+        day boundaries. This is primarily used for dashboard views of
+        7-day and 30-day rolling gateway statistics.
+        """
+
+        if days <= 0:
+            raise StatisticsError("days must be greater than zero")
+
+        try:
+            end = datetime.now(timezone.utc)
+            start = end - timedelta(days=days)
+            return self._aggregate_rolling_window(start, end, window_label=f"{days}d")
+        except Exception as exc:
+            self._raise_stats_error(f"get last {days}d stats", exc)
 
     def get_hourly_breakdown_today(self) -> List[Dict[str, Any]]:
         """
@@ -264,6 +280,23 @@ class StatsService:
             })
         
         self.logger.debug("Aggregated stats between %s and %s: %s", start, end, stats)
+        return stats
+
+    def _aggregate_rolling_window(
+        self, start: datetime, end: datetime, window_label: str | None = None
+    ) -> Dict[str, Any]:
+        """
+        Helper to aggregate stats for an arbitrary rolling window.
+
+        Wraps `_aggregate_stats` and annotates the result with the window
+        boundaries for easier consumption by API clients.
+        """
+
+        stats = self._aggregate_stats(start, end)
+        stats["start_time"] = start
+        stats["end_time"] = end
+        if window_label is not None:
+            stats["window"] = window_label
         return stats
 
     def _hourly_breakdown(self, start: datetime, end: datetime) -> List[Dict[str, Any]]:

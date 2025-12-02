@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { DailyStatsResponse, HourlyStat } from '@/types/api';
+import type { DailyStatsResponse, HourlyStat, RollingStatsResponse } from '@/types/api';
 import type { Message } from '@/types/message';
 import { addDays, differenceInCalendarDays, formatISO } from 'date-fns';
 
@@ -18,6 +18,10 @@ export const statsService = {
   },
   getTodayDetailed: async () => {
     const { data } = await api.get<HourlyStat[]>('/stats/today/detailed');
+    return data;
+  },
+  getRollingStats: async () => {
+    const { data } = await api.get<RollingStatsResponse>('/stats/rolling');
     return data;
   },
   getStatsByDate: async (date: string) => {

@@ -74,7 +74,7 @@ class MeshtasticService:
             results[recipient] = self.send_message(recipient, message, timeout=timeout)
         return results
 
-    def send_message_to_channel(self, message: str, channel_id: int = 0, timeout: int = 30) -> bool:
+    def send_message_to_channel(self, message: str, channel_id: int = 0, timeout: int = 60) -> bool:
         """Send a message to a specific channel (0-7)."""
         if not message:
             raise ValueError("Message cannot be empty")
@@ -173,14 +173,22 @@ class MeshtasticService:
         return False
 
     def _execute_command(self, cmd: Sequence[str], timeout: int) -> Tuple[str, str, int]:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-        return result.stdout, result.stderr, result.returncode
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+            return result.stdout, result.stderr, result.returncode
+        except subprocess.TimeoutExpired as e:
+            self.logger.error(
+                "Command timed out after %d seconds: %s",
+                timeout,
+                ' '.join(cmd)
+            )
+            raise TimeoutError(f"Command timed out after {timeout} seconds") from e
 
     def _build_cli_command(self) -> List[str]:
         if not self.cli_path:

@@ -58,6 +58,8 @@ class MeshtasticCommandService:
         self._receive_registered = False
         self._disconnect_registered = False
         self._reconnect_event = threading.Event()
+        self._last_error: Optional[str] = None
+        self._restart_count: int = 0
         
         # Rate limiting configuration
         self.rate_limit_seconds = config.meshtastic_rate_limit_seconds
@@ -108,9 +110,18 @@ class MeshtasticCommandService:
                 self._initialize_listener()
                 self._reconnect_event.clear()
                 while self._running and not self._reconnect_event.wait(timeout=5):
+                    # Periodically wake up so we can respond to stop() even if
+                    # no reconnect events are triggered.
                     pass
-            except Exception:  # pragma: no cover - hardware dependent
-                self.logger.error("Failed to start Meshtastic command listener", exc_info=True)
+            except Exception as exc:  # pragma: no cover - hardware dependent
+                self._last_error = str(exc)
+                self._restart_count += 1
+                self.logger.error(
+                    "Failed to start Meshtastic command listener (attempt %s): %s",
+                    self._restart_count,
+                    exc,
+                    exc_info=True,
+                )
             if self._running:
                 self.logger.info("Retrying Meshtastic command listener in 5s")
                 time.sleep(5)
@@ -129,6 +140,7 @@ class MeshtasticCommandService:
             pub.subscribe(self._on_connection_lost, "meshtastic.connection.lost")
             self._disconnect_registered = True
         self._subscribed = True
+        self._last_error = None
         self.logger.info("Meshtastic command listener started")
 
     def _cleanup_interface(self) -> None:
@@ -153,9 +165,24 @@ class MeshtasticCommandService:
             self._interface = None
 
     def _on_connection_lost(self, *_args, **_kwargs) -> None:
+        self._schedule_reconnect("Meshtastic connection lost")
+
+    def _schedule_reconnect(self, reason: str, exc: Optional[Exception] = None) -> None:
+        """
+        Cleanly tear down the current interface and trigger a reconnect.
+
+        This is used both when the Meshtastic library signals a connection
+        loss and when we detect hard failures while sending responses
+        (e.g. BrokenPipeError). It is safe to call multiple times.
+        """
         if not self._running:
             return
-        self.logger.warning("Meshtastic connection lost; scheduling reconnect")
+        message = reason if exc is None else f"{reason}: {exc}"
+        self._last_error = message
+        if exc is not None:
+            self.logger.warning("Scheduling Meshtastic reconnect: %s", message, exc_info=True)
+        else:
+            self.logger.warning("Scheduling Meshtastic reconnect: %s", message)
         self._cleanup_interface()
         self._reconnect_event.set()
 
@@ -359,8 +386,12 @@ class MeshtasticCommandService:
                     self._interface.sendText(chunk, destinationId=destination_id)
                 else:
                     self.meshtastic_service.send_message(destination_id, chunk)
-        except Exception:  # pragma: no cover - hardware dependent
+        except Exception as exc:  # pragma: no cover - hardware dependent
             self.logger.error("Failed to send Meshtastic response", exc_info=True)
+            # If sending fails, the underlying interface is very likely in a bad
+            # state (e.g. BrokenPipeError). Trigger a reconnect so future
+            # commands can still be processed.
+            self._schedule_reconnect("Failed to send Meshtastic response", exc)
 
     def _post_to_channel(self, message: str) -> None:
         channel_id = self.config.meshtastic_stats_channel_id or 0
@@ -372,8 +403,9 @@ class MeshtasticCommandService:
                     self._interface.sendText(chunk, destinationId=channel_id)
                 else:
                     self.meshtastic_service.send_message(channel_id, chunk)
-        except Exception:  # pragma: no cover
+        except Exception as exc:  # pragma: no cover
             self.logger.warning("Failed to post stats message to channel %s", channel_id, exc_info=True)
+            self._schedule_reconnect(f"Failed to post stats message to channel {channel_id}", exc)
 
     def _coerce_user_id(self, raw) -> Optional[int]:
         try:
@@ -431,6 +463,24 @@ class MeshtasticCommandService:
         
         if users_to_remove:
             self.logger.debug("Cleaned up rate limit tracker for %d inactive users", len(users_to_remove))
+
+    # ------------------------------------------------------------------ #
+    # Introspection helpers (used by admin/health endpoints)
+    # ------------------------------------------------------------------ #
+    def get_status(self) -> Dict[str, Any]:
+        """
+        Lightweight snapshot of the command listener state.
+
+        Returns a plain dict so it can be JSON-encoded directly.
+        """
+        return {
+            "running": self._running,
+            "subscribed": self._subscribed,
+            "receive_handler_registered": self._receive_registered,
+            "disconnect_handler_registered": self._disconnect_registered,
+            "restart_count": self._restart_count,
+            "last_error": self._last_error,
+        }
 
     def _is_text_message(self, decoded: Any) -> bool:
         if decoded is None:

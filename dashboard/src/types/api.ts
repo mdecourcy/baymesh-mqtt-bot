@@ -27,6 +27,29 @@ export interface DailyStatsResponse {
   p99_gateways?: number | null;
 }
 
+/**
+ * Shared shape for percentile-enabled window statistics.
+ *
+ * This is used both for daily stats and for rolling 24h/7d/30d windows
+ * returned by the `/stats/rolling` endpoint.
+ */
+export interface WindowStats {
+  average_gateways: number;
+  max_gateways: number;
+  min_gateways: number;
+  message_count: number;
+  p50_gateways?: number | null;
+  p90_gateways?: number | null;
+  p95_gateways?: number | null;
+  p99_gateways?: number | null;
+}
+
+export interface RollingStatsResponse {
+  last_24h: WindowStats;
+  last_7d: WindowStats;
+  last_30d: WindowStats;
+}
+
 export interface HealthResponse {
   status: 'ok' | 'warning' | 'critical';
   database: string;

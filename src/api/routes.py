@@ -167,6 +167,27 @@ def get_comparison_stats(db: Session = Depends(get_db)) -> dict:
     return data
 
 
+@router.get("/stats/rolling", tags=["Statistics"])
+def get_rolling_stats(db: Session = Depends(get_db)) -> dict:
+    """
+    Return rolling-window statistics with percentiles for common windows.
+
+    This is primarily used by the dashboard percentile view to show
+    gateway distribution over the last 24 hours, 7 days, and 30 days.
+    """
+
+    stats_service, _, _, _ = _build_services(db)
+    last_24h = stats_service.get_last_24h_stats()
+    last_7d = stats_service.get_last_ndays_stats(7)
+    last_30d = stats_service.get_last_ndays_stats(30)
+    logger.info("Fetched rolling stats (24h/7d/30d)")
+    return {
+        "last_24h": last_24h,
+        "last_7d": last_7d,
+        "last_30d": last_30d,
+    }
+
+
 @router.get("/stats/user/{user_id}/last", response_model=MessageResponse, tags=["Statistics"])
 def get_user_last_message(user_id: int, db: Session = Depends(get_db)) -> MessageResponse:
     """
@@ -403,6 +424,65 @@ def test_daily_broadcast() -> dict:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send broadcast: {str(exc)}"
+        )
+
+
+@router.get("/admin/commands/status", tags=["Admin"])
+def get_command_service_status() -> dict:
+    """
+    Get runtime status for the Meshtastic command listener.
+    """
+    from src.api.main import app
+
+    command_manager = getattr(app.state, "command_manager", None)
+    if not command_manager:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Command manager not available",
+        )
+
+    get_status = getattr(command_manager, "get_status", None)
+    if callable(get_status):
+        return get_status()
+
+    return {
+        "running": getattr(command_manager, "_running", False),
+        "subscribed": getattr(command_manager, "_subscribed", False),
+    }
+
+
+@router.post("/admin/commands/restart", tags=["Admin"])
+def restart_command_service() -> dict:
+    """
+    Restart the Meshtastic command listener.
+
+    This is useful if the underlying TCP connection enters a bad state
+    (for example after radio reboot or network changes).
+    """
+    from src.api.main import app
+
+    command_manager = getattr(app.state, "command_manager", None)
+    if not command_manager:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Command manager not available",
+        )
+
+    try:
+        command_manager.stop()
+        command_manager.start()
+        get_status = getattr(command_manager, "get_status", None)
+        status = get_status() if callable(get_status) else None
+        logger.info("Meshtastic command manager restarted via admin endpoint")
+        return {
+            "status": "restarted",
+            "details": status,
+        }
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Failed to restart command manager: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to restart command manager: {str(exc)}",
         )
 
 
