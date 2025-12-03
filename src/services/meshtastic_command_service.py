@@ -192,15 +192,19 @@ class MeshtasticCommandService:
         if not text or not text.startswith(self.COMMAND_PREFIX):
             return
         if not self._is_text_message(decoded):
+            self.logger.debug("Ignoring non-text Meshtastic packet with command prefix: %s", text)
             return
         if not self._is_public_channel(packet):
+            self.logger.debug("Ignoring command on non-public channel: %s", text)
             return
-        sender = self._get_value(packet, "fromId")
-        if sender is None:
+        sender_raw = self._get_value(packet, "fromId")
+        if sender_raw is None:
             return
-        sender_id = self._coerce_user_id(sender)
+        sender_id = self._coerce_user_id(sender_raw)
         if sender_id is None:
             return
+
+        self.logger.info("Received Meshtastic command from %s: %s", sender_id, text.strip())
 
         # Check rate limit
         if not self._check_rate_limit(sender_id):
@@ -219,17 +223,18 @@ class MeshtasticCommandService:
                     )
             except Exception:
                 self.logger.warning("Failed to log rate-limited command", exc_info=True)
-            self._send_response(sender_id, "⚠️ Rate limit: Please wait before sending another command.")
+            self._send_response(sender_id, "⚠️ Rate limit: Please wait before sending another command.", raw_destination=sender_raw)
             return
 
         response = self._process_command(sender_id, text.strip())
         if response:
-            self._send_response(sender_id, response)
+            self._send_response(sender_id, response, raw_destination=sender_raw)
             self._post_to_channel(response)
 
     def _process_command(self, meshtastic_node_id: int, command: str) -> Optional[str]:
         """Process command from a Meshtastic node ID (not database user.id)."""
         normalized = command.lower().strip()
+        self.logger.info("Processing command from %s: %s", meshtastic_node_id, normalized)
         
         # Convert Meshtastic node ID to database user.id for logging and queries
         db_user = self.subscription_service.user_repo.get_by_user_id(meshtastic_node_id)
@@ -379,12 +384,34 @@ class MeshtasticCommandService:
             "Collects MQTT stats and delivers daily summaries."
         )
 
-    def _send_response(self, destination_id: int, message: str) -> None:
+    def _send_response(self, destination_id: int, message: str, *, raw_destination: Any | None = None) -> None:
         try:
-            for chunk in self._chunk_message(message):
+            chunks = self._chunk_message(message)
+            for idx, chunk in enumerate(chunks):
                 if self._interface:
-                    self._interface.sendText(chunk, destinationId=destination_id)
+                    self.logger.info(
+                        "Sending Meshtastic direct response via interface to %s (chunk %s/%s, len=%s)",
+                        raw_destination if raw_destination is not None else destination_id,
+                        idx + 1,
+                        len(chunks),
+                        len(chunk),
+                    )
+                    # For command replies we always send a direct message back
+                    # to the originating node. Using destinationId keeps this
+                    # as a DM rather than a channel broadcast.
+                    dest = raw_destination if raw_destination is not None else destination_id
+                    self._interface.sendText(chunk, destinationId=dest)
+                    # Give the radio some breathing room between chunks. Some
+                    # firmwares appear to silently drop back-to-back packets,
+                    # so we wait a bit before sending the next one.
+                    if idx < len(chunks) - 1:
+                        time.sleep(5.0)
                 else:
+                    self.logger.info(
+                        "Sending Meshtastic response via service to %s (len=%s)",
+                        destination_id,
+                        len(chunk),
+                    )
                     self.meshtastic_service.send_message(destination_id, chunk)
         except Exception as exc:  # pragma: no cover - hardware dependent
             self.logger.error("Failed to send Meshtastic response", exc_info=True)
@@ -400,8 +427,18 @@ class MeshtasticCommandService:
         try:
             for chunk in self._chunk_message(message):
                 if self._interface:
+                    self.logger.info(
+                        "Posting Meshtastic stats message to channel %s via interface (len=%s)",
+                        channel_id,
+                        len(chunk),
+                    )
                     self._interface.sendText(chunk, destinationId=channel_id)
                 else:
+                    self.logger.info(
+                        "Posting Meshtastic stats message to channel %s via service (len=%s)",
+                        channel_id,
+                        len(chunk),
+                    )
                     self.meshtastic_service.send_message(channel_id, chunk)
         except Exception as exc:  # pragma: no cover
             self.logger.warning("Failed to post stats message to channel %s", channel_id, exc_info=True)
