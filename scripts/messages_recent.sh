@@ -9,3 +9,4 @@ LIMIT="${1:-100}"
 echo "Fetching last ${LIMIT} messages..."
 curl -s "${BASE_URL}/messages/recent?limit=${LIMIT}" | jq .
 
+

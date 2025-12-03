@@ -43,3 +43,4 @@ def build_meshtastic_interface(connection_url: str):
 
     raise MeshtasticTransportError(f"Unsupported MESHTASTIC_CONNECTION_URL: {connection_url}")
 
+

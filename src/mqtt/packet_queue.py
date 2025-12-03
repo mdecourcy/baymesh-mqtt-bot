@@ -68,7 +68,7 @@ class MeshPacketQueue:
         self._lock = threading.Lock()
         self.logger = get_logger(self.__class__.__name__)
         
-    def add(self, parsed_message: Dict[str, Any]) -> bool:
+    def add(self, parsed_message: Dict[str, Any]) -> tuple[bool, bool]:
         """
         Add a parsed MQTT message to the queue.
         
@@ -76,30 +76,37 @@ class MeshPacketQueue:
             parsed_message: Parsed message dict from ProtobufMessageParser
             
         Returns:
-            True if added, False if it's a duplicate envelope
+            (added, late_arrival): 
+                - added: True if added to queue
+                - late_arrival: True if this is a late gateway relay for an already-persisted message
         """
         packet_id = parsed_message.get("message_id")
         if not packet_id or not isinstance(packet_id, int):
-            return False
+            return (False, False)
         
         # Deduplicate using hash of the entire envelope
         envelope_hash = self._hash_envelope(parsed_message)
         
         with self._lock:
             if envelope_hash in self._seen_hashes:
-                return False
+                return (False, False)
             
             self._seen_hashes.add(envelope_hash)
             
+            # Check if this is a late arrival (group was already persisted)
+            group_exists = packet_id in self._groups
+            
             # Add to existing group or create new one
-            if packet_id not in self._groups:
+            if not group_exists:
                 self._groups[packet_id] = PacketGroup(
                     packet_id=packet_id,
                     first_seen=time.time()
                 )
             
             self._groups[packet_id].add_envelope(parsed_message)
-            return True
+            
+            # If group didn't exist, this is a late arrival (original was persisted >10s ago)
+            return (True, not group_exists)
     
     def pop_groups_older_than(self, cutoff_time: float) -> List[PacketGroup]:
         """
@@ -167,4 +174,5 @@ class MeshPacketQueue:
         
         json_str = json.dumps(hashable, sort_keys=True)
         return hashlib.sha256(json_str.encode()).hexdigest()
+
 

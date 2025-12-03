@@ -256,10 +256,45 @@ class MQTTClient:
             return
 
         # Add to queue for batched processing
-        added = self._packet_queue.add(parsed)
+        added, late_arrival = self._packet_queue.add(parsed)
         if added:
-            self.logger.debug("Queued packet %s from %s (gateway %s)", 
-                            parsed.get("message_id"), sender_id, parsed.get("gateway_id"))
+            if late_arrival:
+                # This gateway relayed a message that was already persisted
+                # Add it directly to the existing database record
+                self._handle_late_gateway(parsed)
+            else:
+                self.logger.debug("Queued packet %s from %s (gateway %s)", 
+                                parsed.get("message_id"), sender_id, parsed.get("gateway_id"))
+
+    def _handle_late_gateway(self, parsed: dict) -> None:
+        """
+        Handle a gateway relay that arrived after the message was already persisted.
+        
+        This happens when a gateway forwards a message more than 10 seconds after
+        the first gateway relay. We add it directly to the existing message record.
+        """
+        try:
+            message_id = str(parsed.get("message_id"))
+            gateway_id = parsed.get("gateway_id")
+            
+            if not message_id or not gateway_id:
+                return
+            
+            # Find the existing message
+            message = self._message_repo.get_by_message_id(message_id)
+            if not message:
+                self.logger.warning("Late gateway %s for unknown message %s", gateway_id, message_id)
+                return
+            
+            # Add the gateway
+            self._message_repo.add_gateway(message, gateway_id)
+            self.logger.info(
+                "Added late gateway %s to message %s (now %d gateways)",
+                gateway_id, message_id, message.gateway_count
+            )
+            
+        except Exception:
+            self.logger.error("Failed to handle late gateway", exc_info=True)
 
     def _process_nodeinfo(self, parsed: dict) -> None:
         """

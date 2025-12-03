@@ -7,3 +7,4 @@ BASE_URL="${API_BASE_URL:-http://localhost:8000}"
 echo "Fetching comparison statistics..."
 curl -s "${BASE_URL}/stats/comparisons" | jq .
 
+

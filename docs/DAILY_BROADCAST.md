@@ -193,3 +193,4 @@ The broadcast includes:
 - The feature uses the same Meshtastic service as individual DM subscriptions
 - Broadcasts are sent to **all nodes** on the specified channel (not DMs)
 
+

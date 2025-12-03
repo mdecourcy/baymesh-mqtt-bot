@@ -138,3 +138,4 @@ class CommandLogRepository:
         )
         return list(self.session.execute(stmt).scalars().all())
 
+

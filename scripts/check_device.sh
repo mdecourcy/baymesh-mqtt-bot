@@ -52,3 +52,4 @@ echo "5. Verify TCP server is enabled in device settings"
 echo "6. Try connecting via USB instead: MESHTASTIC_CONNECTION_URL=/dev/ttyUSB0"
 echo ""
 
+

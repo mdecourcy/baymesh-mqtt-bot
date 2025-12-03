@@ -39,3 +39,4 @@ export const useDetailedMessages = (limit: number = 100, refreshInterval: number
   return { messages, loading, error };
 };
 
+

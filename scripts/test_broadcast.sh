@@ -12,3 +12,4 @@ curl -X POST "${BASE_URL}/admin/test-broadcast" \
 echo ""
 echo "Broadcast sent! Check your Meshtastic device for the message."
 
+

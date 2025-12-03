@@ -91,3 +91,4 @@ class StatisticsCacheRepository(BaseRepository):
             self._handle_exception("delete statistics cache entries", exc)
 
 
+

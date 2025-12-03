@@ -17,9 +17,9 @@ def test_packet_queue_groups_by_id():
     msg2 = {"message_id": 123, "gateway_id": "!def", "from_id": 456}
     msg3 = {"message_id": 789, "gateway_id": "!ghi", "from_id": 456}
     
-    assert queue.add(msg1) is True
-    assert queue.add(msg2) is True
-    assert queue.add(msg3) is True
+    assert queue.add(msg1) == (True, False)  # First message in new group
+    assert queue.add(msg2) == (True, False)  # Second gateway, group exists
+    assert queue.add(msg3) == (True, False)  # First message in new group
     
     assert queue.exists(123)
     assert queue.exists(789)
@@ -31,8 +31,8 @@ def test_packet_queue_deduplicates_envelopes():
     
     msg = {"message_id": 123, "gateway_id": "!abc", "from_id": 456, "payload_content": "test"}
     
-    assert queue.add(msg) is True
-    assert queue.add(msg) is False  # Duplicate
+    assert queue.add(msg) == (True, False)
+    assert queue.add(msg) == (False, False)  # Duplicate
 
 
 def test_packet_queue_pops_old_groups():
@@ -71,6 +71,28 @@ def test_packet_queue_handles_missing_gateway():
     
     msg = {"message_id": 123, "from_id": 456}  # No gateway_id
     
-    assert queue.add(msg) is True
+    assert queue.add(msg) == (True, False)
     assert queue.exists(123)
+
+
+def test_packet_queue_detects_late_arrivals():
+    """Test that late gateway arrivals (after group was persisted) are detected."""
+    queue = MeshPacketQueue(grouping_duration=0.1)
+    
+    msg1 = {"message_id": 123, "gateway_id": "!abc", "from_id": 456}
+    msg2 = {"message_id": 123, "gateway_id": "!def", "from_id": 456}
+    
+    # Add first gateway
+    assert queue.add(msg1) == (True, False)
+    
+    # Wait for group to age and get persisted
+    time.sleep(0.2)
+    cutoff = time.time() - 0.1
+    groups = queue.pop_groups_older_than(cutoff)
+    assert len(groups) == 1
+    assert not queue.exists(123)  # Group was removed
+    
+    # Add second gateway after group was persisted - this is a late arrival
+    assert queue.add(msg2) == (True, True)  # added=True, late_arrival=True
+
 

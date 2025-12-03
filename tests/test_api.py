@@ -118,3 +118,4 @@ def test_server_error_returns_500(monkeypatch, client: TestClient):
     assert response.status_code == 500
 
 
+

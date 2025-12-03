@@ -17,3 +17,4 @@ LIMIT="${2:-50}"
 echo "Fetching command history for user ${USER_ID}..."
 curl -s "${BASE_URL}/bot/commands/user/${USER_ID}?limit=${LIMIT}" | jq .
 
+
