@@ -1,0 +1,89 @@
+---
+# Woodpecker CI Pipeline for Meshtastic MQTT Bot
+# https://woodpecker-ci.org/docs/usage/intro
+
+when:
+  - event: [push, pull_request, tag]
+    branch: [master, main, develop]
+
+steps:
+  # Install dependencies and run tests
+  - name: test
+    image: python:3.11-slim
+    commands:
+      - apt-get update && apt-get install -y --no-install-recommends build-essential
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
+      - pytest --cov=src --cov-report=term-missing
+    when:
+      event: [push, pull_request]
+
+  # Build frontend (dashboard)
+  - name: build-frontend
+    image: node:18-alpine
+    commands:
+      - cd dashboard
+      - npm ci
+      - npm run build
+      - ls -lah dist/
+    when:
+      event: [push, tag]
+      branch: [master, main]
+
+  # Build Docker image
+  - name: build-docker
+    image: woodpeckerci/plugin-docker-buildx:3
+    settings:
+      repo: baymesh-mqtt-bot
+      tags:
+        - latest
+        - ${CI_COMMIT_SHA:0:8}
+      dockerfile: Dockerfile
+      platforms: linux/amd64,linux/arm64
+      build_args:
+        - BUILDTIME=${CI_COMMIT_SHA}
+      dry_run: true  # Set to false when ready to push to registry
+    when:
+      event: [push, tag]
+      branch: [master, main]
+
+  # Optional: Deploy to Raspberry Pi via SSH
+  - name: deploy-to-pi
+    image: appleboy/drone-ssh:1.7.2
+    settings:
+      host:
+        from_secret: pi_host
+      username:
+        from_secret: pi_user
+      key:
+        from_secret: pi_ssh_key
+      port: 22
+      script:
+        - cd /opt/meshtastic-mqtt-bot
+        - git pull origin master
+        - docker compose down
+        - docker compose build
+        - docker compose up -d
+        - docker compose logs --tail=50
+    when:
+      event: [push]
+      branch: [master, main]
+      # Only deploy when tests pass
+      status: [success]
+
+  # Notification on failure
+  - name: notify-failure
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: deployments
+      username: woodpecker
+      template: >
+        Build {{build.number}} failed for {{repo.name}}
+        Branch: {{build.branch}}
+        Commit: {{build.commit}}
+        Author: {{build.author}}
+    when:
+      status: [failure]
+

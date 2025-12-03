@@ -1,0 +1,25 @@
+---
+# Test pipeline - runs on every push and PR
+
+steps:
+  - name: install-deps
+    image: python:3.11-slim
+    commands:
+      - apt-get update && apt-get install -y --no-install-recommends build-essential
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
+
+  - name: run-tests
+    image: python:3.11-slim
+    commands:
+      - pytest -v
+    depends_on:
+      - install-deps
+
+  - name: run-tests-with-coverage
+    image: python:3.11-slim
+    commands:
+      - pytest --cov=src --cov-report=term-missing --cov-report=html
+    depends_on:
+      - install-deps
+
