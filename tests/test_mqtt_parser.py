@@ -6,13 +6,14 @@ from datetime import datetime, timezone
 import pytest
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from meshtastic import mesh_pb2, mqtt_pb2
+from meshtastic.mesh_pb2 import meshtastic_dot_portnums__pb2 as portnums_pb2
 
 from src.mqtt.parser import ProtobufMessageParser
 
 
 def _build_envelope(text: str, *, encrypted: bool = False):
     data = mesh_pb2.Data()
-    data.portnum = 1
+    data.portnum = portnums_pb2.PortNum.Value("TEXT_MESSAGE_APP")
     data.payload = text.encode("utf-8")
 
     packet = mesh_pb2.MeshPacket()
@@ -71,4 +72,32 @@ def test_parser_skips_json_topics(caplog):
         parsed = parser.parse_message(b'{"foo": 1}', topic="msh/US/bayarea/2/json")
     assert parsed is None
     assert not any("Failed to parse protobuf payload" in record.message for record in caplog.records)
+
+
+def test_parser_respects_ok_to_mqtt_bitfield_zero():
+    """When bitfield==0 for TEXT_MESSAGE_APP, the message should be dropped."""
+    envelope = _build_envelope("hello mesh", encrypted=False)
+    data = envelope.packet.decoded
+    if not hasattr(data, "bitfield"):
+        pytest.skip("Current meshtastic Data proto has no bitfield field")
+    # Explicitly set bitfield=0 to indicate ok_to_mqtt disabled
+    data.bitfield = 0
+
+    parser = ProtobufMessageParser()
+    parsed = parser.parse_message(envelope.SerializeToString(), topic="msh/US/bayarea/2/e")
+    assert parsed is None
+
+
+def test_parser_allows_messages_when_bitfield_nonzero():
+    """When bitfield is non-zero, TEXT_MESSAGE_APP messages should be processed."""
+    envelope = _build_envelope("hello allowed", encrypted=False)
+    data = envelope.packet.decoded
+    if not hasattr(data, "bitfield"):
+        pytest.skip("Current meshtastic Data proto has no bitfield field")
+    data.bitfield = 1
+
+    parser = ProtobufMessageParser()
+    parsed = parser.parse_message(envelope.SerializeToString(), topic="msh/US/bayarea/2/e")
+    assert parsed is not None
+    assert parsed["payload_content"] == "hello allowed"
 

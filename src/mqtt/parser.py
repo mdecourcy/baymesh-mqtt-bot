@@ -191,6 +191,18 @@ class ProtobufMessageParser:
             return None
 
         portnum_name = self._get_portnum_name(decoded)
+
+        # Respect nodes that have "OK to MQTT" disabled by dropping their
+        # text messages before they enter our stats/command pipeline.
+        # Newer firmware surfaces this as a bitfield flag on decoded packets.
+        bitfield = getattr(decoded, "bitfield", None)
+        if portnum_name == "TEXT_MESSAGE_APP" and bitfield == 0:
+            self.logger.debug(
+                "Dropping TEXT_MESSAGE_APP packet %s because ok_to_mqtt is disabled (bitfield=0)",
+                getattr(packet, "id", None),
+            )
+            return None
+
         payload_content = self._extract_payload(decoded, portnum_name)
         if payload_content is None and portnum_name != "NODEINFO_APP":
             return None
@@ -248,6 +260,17 @@ class ProtobufMessageParser:
 
         decoded = getattr(message, "decoded", None)
         portnum_name = self._get_portnum_name(decoded)
+
+        # Apply the same ok_to_mqtt gating for legacy Data payloads, in case
+        # they are published directly without a ServiceEnvelope wrapper.
+        bitfield = getattr(decoded, "bitfield", None) if decoded is not None else None
+        if portnum_name == "TEXT_MESSAGE_APP" and bitfield == 0:
+            self.logger.debug(
+                "Dropping legacy TEXT_MESSAGE_APP packet %s because ok_to_mqtt is disabled (bitfield=0)",
+                getattr(message, "id", None),
+            )
+            return None
+
         payload_content = self._extract_payload(decoded, portnum_name)
 
         sender_id, sender_name, role = self.extract_sender_info(
