@@ -37,18 +37,32 @@ The Meshtastic Statistics Bot ingests MQTT data from a Meshtastic mesh, aggregat
 - **Docker-ready**: Comes with Dockerfile & docker-compose for container deployments.
 
 ## Architecture Overview
-```
-Meshtastic Nodes <-> MQTT Broker -> MQTT Client -> Packet Queue -> DB (SQLAlchemy)
-                           |                                            |
-                           |                                            v
-                     Command Service <--TCP--> Meshtastic Device   Stats Service
-                           ^                                            |
-                           |                                            v
-                     Direct Messages                         FastAPI + Scheduler
-                                                                       |
-                                                    +------------------+------------------+
-                                                    |                                     |
-                                              React Dashboard                      Daily Broadcasts
+```mermaid
+flowchart TB
+    Nodes[Meshtastic Nodes] <-->|MQTT| Broker[MQTT Broker]
+    Broker -->|Subscribe| MQTTClient[MQTT Client]
+    MQTTClient --> Queue[Packet Queue<br/>10s window]
+    Queue --> DB[(Database<br/>SQLAlchemy)]
+    
+    DB --> Stats[Stats Service]
+    Stats --> API[FastAPI + Scheduler]
+    
+    Nodes <-->|Mesh| Device[Meshtastic Device]
+    Device <-->|TCP :4403| CmdService[Command Service]
+    CmdService -->|Query| Stats
+    CmdService -.->|DM Reply| Device
+    
+    API --> Dashboard[React Dashboard]
+    API --> Broadcasts[Daily Broadcasts]
+    Broadcasts -.->|CLI| Device
+    
+    classDef meshStyle fill:#4ade80,stroke:#16a34a,stroke-width:2px
+    classDef backendStyle fill:#60a5fa,stroke:#2563eb,stroke-width:2px
+    classDef deviceStyle fill:#f472b6,stroke:#db2777,stroke-width:2px
+    
+    class Nodes,Device meshStyle
+    class Broker,MQTTClient,Queue,DB,Stats,API,CmdService backendStyle
+    class Dashboard,Broadcasts deviceStyle
 ```
 Components:
 - **MQTT Client**: Parses protobuf messages, queues them for 10s to collect gateway relays, persists to DB.
