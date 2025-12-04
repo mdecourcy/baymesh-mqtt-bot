@@ -45,9 +45,12 @@ steps:
     image: /bin/sh
     commands:
       - set -ex
-      # Install Python deps into the system-managed environment (CI host) even though it's PEP 668 managed
-      - python3 -m pip install --break-system-packages --upgrade pip
-      - python3 -m pip install --break-system-packages -r requirements.txt
+      # Use a fresh virtualenv per workspace so each pipeline has a clean Python env
+      - rm -rf .venv || true
+      - python3 -m venv .venv
+      - . .venv/bin/activate
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
       - pytest --cov=src --cov-report=term-missing
     when:
       event: [push, pull_request]
