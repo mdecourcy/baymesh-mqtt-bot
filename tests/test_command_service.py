@@ -192,7 +192,8 @@ def test_on_receive_processes_public_text_message(command_service):
     service._on_receive(packet, None)
     sender_id = int("00AB12CD", 16)
     service._process_command.assert_called_once_with(sender_id, "!stats today")
-    service._send_response.assert_called_once_with(sender_id, "ok")
+    # _send_response now always includes raw_destination so DMs go back to the exact node ID
+    service._send_response.assert_called_once_with(sender_id, "ok", raw_destination="!00AB12CD")
     service._post_to_channel.assert_called_once_with("ok")
 
 

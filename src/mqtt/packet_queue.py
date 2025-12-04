@@ -65,6 +65,9 @@ class MeshPacketQueue:
         self.grouping_duration = grouping_duration
         self._groups: Dict[int, PacketGroup] = {}
         self._seen_hashes: set[str] = set()
+        # Track packet IDs whose groups have already been popped so we can
+        # detect late gateway arrivals.
+        self._popped_ids: set[int] = set()
         self._lock = threading.Lock()
         self.logger = get_logger(self.__class__.__name__)
         
@@ -93,8 +96,10 @@ class MeshPacketQueue:
             
             self._seen_hashes.add(envelope_hash)
             
-            # Check if this is a late arrival (group was already persisted)
+            # Check if this is a late arrival (group was already persisted
+            # and removed from _groups previously).
             group_exists = packet_id in self._groups
+            is_late_arrival = (not group_exists) and (packet_id in self._popped_ids)
             
             # Add to existing group or create new one
             if not group_exists:
@@ -105,8 +110,7 @@ class MeshPacketQueue:
             
             self._groups[packet_id].add_envelope(parsed_message)
             
-            # If group didn't exist, this is a late arrival (original was persisted >10s ago)
-            return (True, not group_exists)
+            return (True, is_late_arrival)
     
     def pop_groups_older_than(self, cutoff_time: float) -> List[PacketGroup]:
         """
@@ -129,6 +133,9 @@ class MeshPacketQueue:
                     packet_ids_to_remove.append(packet_id)
             
             for packet_id in packet_ids_to_remove:
+                # Remember that we've already processed this packet_id so any
+                # future envelopes for it can be treated as late arrivals.
+                self._popped_ids.add(packet_id)
                 del self._groups[packet_id]
         
         return ready_groups
