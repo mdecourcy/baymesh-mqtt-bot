@@ -9,11 +9,13 @@ when:
 # Use local backend without Docker plugin-git clone
 clone:
   git:
+    image: alpine:3.19
     disable: true
 
 steps:
   # Manual clone using Forgejo HTTP (avoids plugin-git)
   - name: clone
+    image: alpine:3.19
     commands:
       - set -ex
       # Clean any existing checkout in the working directory
@@ -26,6 +28,7 @@ steps:
 
   # Run tests
   - name: test
+    image: alpine:3.19
     commands:
       - set -ex
       - pip3 install --upgrade pip
@@ -36,6 +39,7 @@ steps:
 
   # Build frontend (dashboard)
   - name: build-frontend
+    image: alpine:3.19
     commands:
       - cd dashboard
       - npm ci
@@ -47,6 +51,7 @@ steps:
 
   # Deploy to Raspberry Pi via SSH
   - name: deploy-to-pi
+    image: alpine:3.19
     commands:
       - echo "Deploy step is not yet configured for local backend; skipping."
     when:
