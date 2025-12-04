@@ -25,18 +25,16 @@ steps:
 
   # Run tests
   - name: test
-    image: python:3.11-slim
     commands:
-      - apt-get update && apt-get install -y --no-install-recommends build-essential
-      - pip install --upgrade pip
-      - pip install -r requirements.txt
+      - set -ex
+      - pip3 install --upgrade pip
+      - pip3 install -r requirements.txt
       - pytest --cov=src --cov-report=term-missing
     when:
       event: [push, pull_request]
 
   # Build frontend (dashboard)
   - name: build-frontend
-    image: node:18-alpine
     commands:
       - cd dashboard
       - npm ci
@@ -48,22 +46,8 @@ steps:
 
   # Deploy to Raspberry Pi via SSH
   - name: deploy-to-pi
-    image: appleboy/drone-ssh:1.7.2
-    settings:
-      host:
-        from_secret: pi_host
-      username:
-        from_secret: pi_user
-      key:
-        from_secret: pi_ssh_key
-      port: 22
-      script:
-        - cd /opt/meshtastic-mqtt-bot
-        - git pull origin master
-        - docker compose down
-        - docker compose build
-        - docker compose up -d
-        - docker compose logs --tail=50
+    commands:
+      - echo "Deploy step is not yet configured for local backend; skipping."
     when:
       event: [push]
       branch: [master, main]
