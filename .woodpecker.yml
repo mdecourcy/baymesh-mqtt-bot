@@ -14,8 +14,12 @@ steps:
   # Manual clone using Forgejo HTTP (avoids plugin-git)
   - name: clone
     commands:
-      - git clone http://192.168.8.191:3000/mac/baymesh-mqtt-bot.git .
-      - git checkout "${CI_COMMIT_SHA:-master}"
+      - set -ex
+      # Clean any existing checkout in the working directory
+      - rm -rf .git ./* || true
+      # Use the CI-provided clone URL so auth tokens / credentials are included
+      - '[ -n "${CI_REPO_CLONE_URL}" ] && git clone "${CI_REPO_CLONE_URL}" . || git clone http://192.168.8.191:3000/mac/baymesh-mqtt-bot.git .'
+      - '[ -n "${CI_COMMIT_SHA}" ] && git checkout "${CI_COMMIT_SHA}" || git checkout master'
     when:
       event: [push, pull_request, tag]
 
