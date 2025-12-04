@@ -3,7 +3,7 @@
 # https://woodpecker-ci.org/docs/usage/intro
 
 when:
-  - event: [push, pull_request, tag]
+  - event: [push, pull_request, tag, manual]
     branch: [master, main, develop]
 
 # Use local backend without Docker plugin-git clone
