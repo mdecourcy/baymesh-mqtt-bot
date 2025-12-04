@@ -38,7 +38,7 @@ steps:
           fi
         fi
     when:
-      event: [push, pull_request, tag]
+      event: [push, pull_request, tag, manual]
 
   # Run tests
   - name: test
@@ -53,7 +53,7 @@ steps:
       - pip install -r requirements.txt
       - pytest --cov=src --cov-report=term-missing
     when:
-      event: [push, pull_request]
+      event: [push, pull_request, manual]
 
   # Build frontend (dashboard)
   - name: build-frontend
@@ -64,7 +64,7 @@ steps:
       - npm run build
       - ls -lah dist/
     when:
-      event: [push, tag]
+      event: [push, tag, manual]
       branch: [master, main]
 
   # Deploy to Raspberry Pi via SSH
