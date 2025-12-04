@@ -59,20 +59,3 @@ steps:
       branch: [master, main]
       # Only deploy when tests pass
       status: [success]
-
-  # Notification on failure
-  - name: notify-failure
-    image: plugins/slack
-    settings:
-      webhook:
-        from_secret: slack_webhook
-      channel: deployments
-      username: woodpecker
-      template: >
-        Build {{build.number}} failed for {{repo.name}}
-        Branch: {{build.branch}}
-        Commit: {{build.commit}}
-        Author: {{build.author}}
-    when:
-      status: [failure]
-
