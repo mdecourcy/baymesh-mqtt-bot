@@ -8,7 +8,8 @@ when:
 
 # Use local backend without Docker plugin-git clone
 clone:
-  disable: true
+  git:
+    disable: true
 
 steps:
   # Manual clone using Forgejo HTTP (avoids plugin-git)
