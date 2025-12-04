@@ -419,4 +419,3 @@ steps:
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [Project README](../README.md)
 - [Architecture Documentation](ARCHITECTURE.md)
-
