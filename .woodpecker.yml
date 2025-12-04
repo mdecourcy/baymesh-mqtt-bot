@@ -67,19 +67,18 @@ steps:
       event: [push, tag, manual]
       branch: [master, main]
 
-  # Deploy to Raspberry Pi via SSH
+  # Deploy to baymesh-mqtt-bot host via SSH (bare-metal, no Docker)
   - name: deploy-to-pi
     image: /bin/sh
     commands:
       - set -ex
-      # Deploy latest code to the baymesh-mqtt-bot host and restart via docker compose
+      # Deploy latest code to the baymesh-mqtt-bot host and restart systemd service
       - |
         ssh -i /root/.ssh/woodpecker-deploy -o StrictHostKeyChecking=no root@192.168.8.114 << 'EOF'
         set -ex
-        cd /opt/meshtastic-mqtt-bot
+        cd /opt/baymesh-mqtt-bot
         git pull --ff-only
-        docker compose pull
-        docker compose up -d
+        systemctl restart meshtastic-stats-bot.service
         EOF
     when:
       event: [push]
