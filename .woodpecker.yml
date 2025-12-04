@@ -18,11 +18,27 @@ steps:
     image: /bin/sh
     commands:
       - set -ex
-      # Clean any existing checkout in the working directory
-      - rm -rf .git ./* || true
-      # Use the CI-provided clone URL so auth tokens / credentials are included
-      - '[ -n "${CI_REPO_CLONE_URL}" ] && git clone "${CI_REPO_CLONE_URL}" . || git clone http://192.168.8.191:3000/mac/baymesh-mqtt-bot.git .'
-      - '[ -n "${CI_COMMIT_SHA}" ] && git checkout "${CI_COMMIT_SHA}" || git checkout master'
+      # Determine repo URL (prefer CI-provided URL with credentials)
+      - 'REPO_URL="${CI_REPO_CLONE_URL:-http://192.168.8.191:3000/mac/baymesh-mqtt-bot.git}"'
+      # If this directory is already a git repo, just fetch + reset to the desired commit
+      - |
+        if [ -d ".git" ]; then
+          git remote set-url origin "${REPO_URL}"
+          git fetch origin
+          if [ -n "${CI_COMMIT_SHA}" ]; then
+            git checkout "${CI_COMMIT_SHA}"
+          else
+            git checkout master
+            git reset --hard origin/master
+          fi
+        else
+          git clone "${REPO_URL}" .
+          if [ -n "${CI_COMMIT_SHA}" ]; then
+            git checkout "${CI_COMMIT_SHA}"
+          else
+            git checkout master
+          fi
+        fi
     when:
       event: [push, pull_request, tag]
 
