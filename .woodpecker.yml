@@ -7,7 +7,7 @@ when:
     branch: [master, main, develop]
 
 steps:
-  # Install dependencies and run tests
+  # Run tests
   - name: test
     image: python:3.11-slim
     commands:
@@ -30,24 +30,7 @@ steps:
       event: [push, tag]
       branch: [master, main]
 
-  # Build Docker image
-  - name: build-docker
-    image: woodpeckerci/plugin-docker-buildx:3
-    settings:
-      repo: baymesh-mqtt-bot
-      tags:
-        - latest
-        - ${CI_COMMIT_SHA:0:8}
-      dockerfile: Dockerfile
-      platforms: linux/amd64,linux/arm64
-      build_args:
-        - BUILDTIME=${CI_COMMIT_SHA}
-      dry_run: true  # Set to false when ready to push to registry
-    when:
-      event: [push, tag]
-      branch: [master, main]
-
-  # Optional: Deploy to Raspberry Pi via SSH
+  # Deploy to Raspberry Pi via SSH
   - name: deploy-to-pi
     image: appleboy/drone-ssh:1.7.2
     settings:
