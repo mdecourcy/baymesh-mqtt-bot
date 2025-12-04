@@ -6,7 +6,19 @@ when:
   - event: [push, pull_request, tag]
     branch: [master, main, develop]
 
+# Use local backend without Docker plugin-git clone
+clone:
+  disable: true
+
 steps:
+  # Manual clone using Forgejo HTTP (avoids plugin-git)
+  - name: clone
+    commands:
+      - git clone http://192.168.8.191:3000/mac/baymesh-mqtt-bot.git .
+      - git checkout "${CI_COMMIT_SHA:-master}"
+    when:
+      event: [push, pull_request, tag]
+
   # Run tests
   - name: test
     image: python:3.11-slim
