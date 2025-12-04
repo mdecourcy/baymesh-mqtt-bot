@@ -18,12 +18,9 @@ steps:
     image: /bin/sh
     commands:
       - set -ex
-      # Determine repo URL (prefer CI-provided URL with credentials)
-      - 'REPO_URL="${CI_REPO_CLONE_URL:-http://192.168.8.191:3000/mac/baymesh-mqtt-bot.git}"'
       # If this directory is already a git repo, just fetch + reset to the desired commit
       - |
         if [ -d ".git" ]; then
-          git remote set-url origin "${REPO_URL}"
           git fetch origin
           if [ -n "${CI_COMMIT_SHA}" ]; then
             git checkout "${CI_COMMIT_SHA}"
@@ -32,7 +29,8 @@ steps:
             git reset --hard origin/master
           fi
         else
-          git clone "${REPO_URL}" .
+          # Use the CI-provided clone URL (with credentials) if available; otherwise fall back to plain HTTP
+          [ -n "${CI_REPO_CLONE_URL}" ] && git clone "${CI_REPO_CLONE_URL}" . || git clone http://192.168.8.191:3000/mac/baymesh-mqtt-bot.git .
           if [ -n "${CI_COMMIT_SHA}" ]; then
             git checkout "${CI_COMMIT_SHA}"
           else
