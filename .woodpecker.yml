@@ -71,7 +71,16 @@ steps:
   - name: deploy-to-pi
     image: /bin/sh
     commands:
-      - echo "Deploy step is not yet configured for local backend; skipping."
+      - set -ex
+      # Deploy latest code to the baymesh-mqtt-bot host and restart via docker compose
+      - |
+        ssh -i /root/.ssh/woodpecker-deploy -o StrictHostKeyChecking=no root@192.168.8.114 << 'EOF'
+        set -ex
+        cd /opt/meshtastic-mqtt-bot
+        git pull --ff-only
+        docker compose pull
+        docker compose up -d
+        EOF
     when:
       event: [push]
       branch: [master, main]
