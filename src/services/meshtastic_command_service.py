@@ -211,9 +211,7 @@ class MeshtasticCommandService:
                 # Use a larger timeout to reduce poll frequency further.
                 sock.setblocking(True)
                 sock.settimeout(5.0)
-                self.logger.info(
-                    "Blocking socket with 5s timeout set on Meshtastic TCP iface"
-                )
+                self.logger.info("5s timeout set on Meshtastic TCP interface")
         except Exception:
             self.logger.debug(
                 "Could not tune Meshtastic TCP socket timeout", exc_info=True
