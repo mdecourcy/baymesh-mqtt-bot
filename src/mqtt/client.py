@@ -171,13 +171,21 @@ class MQTTClient:
 
         self.logger.info("Starting MQTT loop")
         try:
-            # Use loop() with 1-second timeout to reduce CPU overhead
-            # (loop_forever and loop_start poll with ~0.01s timeout)
+            # Manual loop with throttling to prevent CPU-intensive polling
+            # Default paho-mqtt loops poll with 0.01s timeout = 100 calls/sec
             while self._running:
-                rc = self._client.loop(timeout=1.0)
+                # Process network events (non-blocking)
+                rc = self._client.loop_read()
                 if rc != mqtt.MQTT_ERR_SUCCESS:
-                    self.logger.warning("MQTT loop returned code %s", rc)
-                    time.sleep(5)  # Back off on errors
+                    self.logger.debug("loop_read error: %s", rc)
+                rc = self._client.loop_write()
+                if rc != mqtt.MQTT_ERR_SUCCESS:
+                    self.logger.debug("loop_write error: %s", rc)
+                rc = self._client.loop_misc()
+                if rc != mqtt.MQTT_ERR_SUCCESS:
+                    self.logger.warning("loop_misc error: %s", rc)
+                # Sleep to limit polling to ~10 times/sec
+                time.sleep(0.1)
         except KeyboardInterrupt:  # pragma: no cover - user interrupt
             self.logger.info("MQTT loop interrupted by user")
         finally:
