@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-import pytest
 
 from fastapi.testclient import TestClient
 
@@ -32,7 +31,10 @@ def test_get_today_stats_returns_200(client: TestClient, sample_messages):
     assert response.status_code == 200
 
 
-def test_get_today_detailed_returns_hourly(client: TestClient, sample_messages):
+def test_get_today_detailed_returns_hourly(
+    client: TestClient,
+    sample_messages
+):
     response = client.get("/stats/today/detailed")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
@@ -56,7 +58,10 @@ def test_post_subscribe_validates_type(client: TestClient, sample_users):
     assert response.status_code in (400, 422)
 
 
-def test_delete_subscribe_removes_subscriptions(client: TestClient, sample_users):
+def test_delete_subscribe_removes_subscriptions(
+    client: TestClient,
+    sample_users
+):
     user_id = sample_users[0].user_id
     client.post(f"/subscribe/{user_id}/daily_avg")
     response = client.delete(f"/subscribe/{user_id}")
@@ -98,7 +103,10 @@ def test_invalid_date_format_returns_400(client: TestClient):
     assert response.status_code == 400
 
 
-def test_invalid_subscription_type_returns_400(client: TestClient, sample_users):
+def test_invalid_subscription_type_returns_400(
+    client: TestClient,
+    sample_users
+):
     user_id = sample_users[0].user_id
     response = client.post(f"/subscribe/{user_id}/invalid-type")
     assert response.status_code in (400, 422)

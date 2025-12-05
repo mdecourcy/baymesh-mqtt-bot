@@ -13,8 +13,7 @@ import json
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from src.logger import get_logger
 
@@ -81,7 +80,8 @@ class MeshPacketQueue:
         Returns:
             (added, late_arrival):
                 - added: True if added to queue
-                - late_arrival: True if this is a late gateway relay for an already-persisted message
+                - late_arrival: True if this is a late gateway relay
+                  for an already-persisted message
         """
         packet_id = parsed_message.get("message_id")
         if not packet_id or not isinstance(packet_id, int):
@@ -96,10 +96,12 @@ class MeshPacketQueue:
 
             self._seen_hashes.add(envelope_hash)
 
-            # Check if this is a late arrival (group was already persisted
-            # and removed from _groups previously).
+            # Check if this is a late arrival (group was already
+            # persisted and removed from _groups previously).
             group_exists = packet_id in self._groups
-            is_late_arrival = (not group_exists) and (packet_id in self._popped_ids)
+            is_late_arrival = (not group_exists) and (
+                packet_id in self._popped_ids
+            )
 
             # Add to existing group or create new one
             if not group_exists:

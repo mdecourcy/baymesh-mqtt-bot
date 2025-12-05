@@ -31,7 +31,12 @@ class UserRepository(BaseRepository):
 
         self.logger.debug("Creating user user_id=%s", user_id)
         try:
-            user = User(user_id=user_id, username=username, mesh_id=mesh_id, role=role)
+            user = User(
+                user_id=user_id,
+                username=username,
+                mesh_id=mesh_id,
+                role=role
+            )
             self.session.add(user)
             self.session.commit()
             return user

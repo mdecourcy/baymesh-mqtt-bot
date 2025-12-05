@@ -4,7 +4,6 @@ FastAPI routes for Meshtastic statistics bot.
 
 from __future__ import annotations
 
-import shutil
 from datetime import datetime
 from typing import Dict, List, Tuple
 from uuid import uuid4
@@ -15,7 +14,6 @@ from sqlalchemy.orm import Session
 from src.config import get_settings
 from src.database import SessionLocal, db_healthcheck
 from src.logger import get_logger, get_log_stats
-from src.models import SubscriptionType
 from src.repository.command_log_repo import CommandLogRepository
 from src.repository.message_repo import MessageRepository
 from src.repository.stats_cache_repo import StatisticsCacheRepository
@@ -25,7 +23,6 @@ from src.schemas import (
     CreateUserRequest,
     DailyStatsResponse,
     DetailedMessageResponse,
-    ErrorResponse,
     GatewayInfo,
     HealthResponse,
     HourlyStatsResponse,
@@ -52,7 +49,9 @@ def get_db() -> Session:
 
 def _build_services(
     db: Session,
-) -> Tuple[StatsService, SubscriptionService, MessageRepository, UserRepository]:
+) -> Tuple[
+    StatsService, SubscriptionService, MessageRepository, UserRepository
+]:
     message_repo = MessageRepository(db)
     stats_cache_repo = StatisticsCacheRepository(db)
     stats_service = StatsService(message_repo, stats_cache_repo)
@@ -74,18 +73,24 @@ def get_last_message_stats(db: Session = Depends(get_db)) -> MessageResponse:
     data = stats_service.get_last_message_stats()
     if not data:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No messages available"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No messages available",
         )
     logger.info("Fetched last message stats")
     return MessageResponse.model_validate(data)
 
 
 @router.get(
-    "/stats/last/{count}", response_model=List[MessageResponse], tags=["Statistics"]
+    "/stats/last/{count}",
+    response_model=List[MessageResponse],
+    tags=["Statistics"],
 )
 def get_last_n_message_stats(
     count: int = Path(
-        ..., ge=1, le=100, description="Number of messages to fetch (1-100)"
+        ...,
+        ge=1,
+        le=100,
+        description="Number of messages to fetch (1-100)",
     ),
     db: Session = Depends(get_db),
 ) -> List[MessageResponse]:
@@ -105,7 +110,9 @@ def get_last_n_message_stats(
     tags=["Messages"],
 )
 def get_detailed_messages(
-    limit: int = Query(100, ge=1, le=500, description="Number of messages to fetch"),
+    limit: int = Query(
+        100, ge=1, le=500, description="Number of messages to fetch"
+    ),
     db: Session = Depends(get_db),
 ) -> List[DetailedMessageResponse]:
     """
@@ -129,7 +136,7 @@ def get_detailed_messages(
                 if gateway_user:
                     gateway_name = gateway_user.username
             except (ValueError, AttributeError):
-                pass
+                pass  # noqa: S110
 
             gateways.append(
                 GatewayInfo(
@@ -139,8 +146,10 @@ def get_detailed_messages(
                 )
             )
 
-        # Use the current username from the User table, fallback to stored sender_name
-        sender_name = msg.sender.username if msg.sender else msg.sender_name
+        # Use current username from User table, fallback to stored name
+        sender_name = (
+            msg.sender.username if msg.sender else msg.sender_name
+        )
 
         result.append(
             DetailedMessageResponse(
@@ -161,8 +170,14 @@ def get_detailed_messages(
     return result
 
 
-@router.get("/stats/today", response_model=DailyStatsResponse, tags=["Statistics"])
-def get_today_stats(db: Session = Depends(get_db)) -> DailyStatsResponse:
+@router.get(
+    "/stats/today",
+    response_model=DailyStatsResponse,
+    tags=["Statistics"],
+)
+def get_today_stats(
+    db: Session = Depends(get_db)
+) -> DailyStatsResponse:
     """
     Return aggregate stats for the current UTC day.
     """
@@ -176,7 +191,8 @@ def get_today_stats(db: Session = Depends(get_db)) -> DailyStatsResponse:
 @router.get("/stats/comparisons", tags=["Statistics"])
 def get_comparison_stats(db: Session = Depends(get_db)) -> dict:
     """
-    Return today's stats with day-over-day, week-over-week, and month-over-month comparisons.
+    Return today's stats with day-over-day, week-over-week,
+    and month-over-month comparisons.
     """
 
     stats_service, _, _, _ = _build_services(db)
@@ -207,7 +223,9 @@ def get_rolling_stats(db: Session = Depends(get_db)) -> dict:
 
 
 @router.get(
-    "/stats/user/{user_id}/last", response_model=MessageResponse, tags=["Statistics"]
+    "/stats/user/{user_id}/last",
+    response_model=MessageResponse,
+    tags=["Statistics"],
 )
 def get_user_last_message(
     user_id: int, db: Session = Depends(get_db)
@@ -220,12 +238,14 @@ def get_user_last_message(
     user = user_repo.get_by_user_id(user_id)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
         )
     data = stats_service.get_last_message_stats_for_user(user.id)
     if not data:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No messages for user"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No messages for user",
         )
     logger.info("Fetched last message for user %s", user_id)
     return MessageResponse.model_validate(data)
@@ -239,7 +259,10 @@ def get_user_last_message(
 def get_user_last_n_messages(
     user_id: int,
     count: int = Path(
-        ..., ge=1, le=100, description="Number of user messages to fetch (1-100)"
+        ...,
+        ge=1,
+        le=100,
+        description="Number of user messages to fetch (1-100)",
     ),
     db: Session = Depends(get_db),
 ) -> List[MessageResponse]:
@@ -251,7 +274,8 @@ def get_user_last_n_messages(
     user = user_repo.get_by_user_id(user_id)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
         )
     data = stats_service.get_last_n_stats_for_user(user.id, count)
     logger.info("Fetched last %s messages for user %s", count, user_id)
@@ -263,7 +287,9 @@ def get_user_last_n_messages(
     response_model=List[HourlyStatsResponse],
     tags=["Statistics"],
 )
-def get_today_hourly_stats(db: Session = Depends(get_db)) -> List[HourlyStatsResponse]:
+def get_today_hourly_stats(
+    db: Session = Depends(get_db)
+) -> List[HourlyStatsResponse]:
     """
     Return hourly breakdown for the current UTC day.
     """
@@ -274,7 +300,11 @@ def get_today_hourly_stats(db: Session = Depends(get_db)) -> List[HourlyStatsRes
     return [HourlyStatsResponse.model_validate(item) for item in data]
 
 
-@router.get("/stats/{date_str}", response_model=DailyStatsResponse, tags=["Statistics"])
+@router.get(
+    "/stats/{date_str}",
+    response_model=DailyStatsResponse,
+    tags=["Statistics"],
+)
 def get_stats_by_date(
     date_str: str, db: Session = Depends(get_db)
 ) -> DailyStatsResponse:
@@ -286,7 +316,8 @@ def get_stats_by_date(
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date format"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format",
         ) from exc
 
     stats_service, _, _, _ = _build_services(db)
@@ -317,7 +348,9 @@ def subscribe_user(
 
 
 @router.delete("/subscribe/{user_id}", tags=["Subscriptions"])
-def unsubscribe_user(user_id: int, db: Session = Depends(get_db)) -> Dict[str, object]:
+def unsubscribe_user(
+    user_id: int, db: Session = Depends(get_db)
+) -> Dict[str, object]:
     """
     Unsubscribe user from all notifications.
     """
@@ -325,14 +358,21 @@ def unsubscribe_user(user_id: int, db: Session = Depends(get_db)) -> Dict[str, o
     _, subscription_service, _, _ = _build_services(db)
     removed = subscription_service.unsubscribe(user_id)
     logger.info("User %s unsubscribed", user_id)
-    return {"status": "unsubscribed" if removed else "not_found", "user_id": user_id}
+    return {
+        "status": "unsubscribed" if removed else "not_found",
+        "user_id": user_id,
+    }
 
 
 @router.get(
-    "/subscriptions", response_model=List[SubscriptionResponse], tags=["Subscriptions"]
+    "/subscriptions",
+    response_model=List[SubscriptionResponse],
+    tags=["Subscriptions"],
 )
 def list_subscriptions(
-    subscription_type: str | None = Query(None, description="Optional type filter"),
+    subscription_type: str | None = Query(
+        None, description="Optional type filter"
+    ),
     db: Session = Depends(get_db),
 ) -> List[SubscriptionResponse]:
     """
@@ -341,11 +381,15 @@ def list_subscriptions(
 
     _, subscription_service, _, _ = _build_services(db)
     if subscription_type:
-        subscriptions = subscription_service.get_subscribers_by_type(subscription_type)
+        subscriptions = subscription_service.get_subscribers_by_type(
+            subscription_type
+        )
     else:
         subscriptions = subscription_service.get_all_active()
     logger.info("Listed subscriptions (type=%s)", subscription_type)
-    return [SubscriptionResponse.model_validate(sub) for sub in subscriptions]
+    return [
+        SubscriptionResponse.model_validate(sub) for sub in subscriptions
+    ]
 
 
 @router.post("/mock/message", tags=["Testing"])
@@ -397,7 +441,9 @@ def create_mock_user(
     """
 
     _, _, _, user_repo = _build_services(db)
-    user = user_repo.get_or_create(payload.user_id, payload.username, payload.mesh_id)
+    user = user_repo.get_or_create(
+        payload.user_id, payload.username, payload.mesh_id
+    )
     logger.info("Created mock user %s", payload.user_id)
     return UserResponse.model_validate(user)
 
@@ -524,14 +570,18 @@ def restart_command_service() -> dict:
         command_manager.stop()
         command_manager.start()
         get_status = getattr(command_manager, "get_status", None)
-        status = get_status() if callable(get_status) else None
-        logger.info("Meshtastic command manager restarted via admin endpoint")
+        status_details = get_status() if callable(get_status) else None
+        logger.info(
+            "Meshtastic command manager restarted via admin endpoint"
+        )
         return {
             "status": "restarted",
-            "details": status,
+            "details": status_details,
         }
     except Exception as exc:  # pragma: no cover - defensive
-        logger.error("Failed to restart command manager: %s", exc, exc_info=True)
+        logger.error(
+            "Failed to restart command manager: %s", exc, exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to restart command manager: {str(exc)}",
@@ -583,7 +633,9 @@ def get_user_command_history(
     Get command history for a specific user.
     """
     command_log_repo = CommandLogRepository(db)
-    logs = command_log_repo.get_user_command_history(user_id=user_id, limit=limit)
+    logs = command_log_repo.get_user_command_history(
+        user_id=user_id, limit=limit
+    )
     return [
         {
             "id": log.id,
@@ -606,11 +658,15 @@ def get_network_stats(db: Session = Depends(get_db)) -> dict:
     from datetime import datetime, timedelta
 
     # Total unique nodes (users)
-    total_nodes = db.execute(sql_select(func.count(User.id))).scalar() or 0
+    total_nodes = (
+        db.execute(sql_select(func.count(User.id))).scalar() or 0
+    )
 
     # Total unique gateways ever seen
     total_gateways = (
-        db.execute(sql_select(func.count(distinct(MessageGateway.gateway_id)))).scalar()
+        db.execute(
+            sql_select(func.count(distinct(MessageGateway.gateway_id)))
+        ).scalar()
         or 0
     )
 
@@ -723,18 +779,34 @@ def get_database_info(db: Session = Depends(get_db)) -> dict:
             db_size_mb = db_size_bytes / (1024 * 1024)
 
     # Count records in each table
-    message_count = db.execute(sql_select(func.count(Message.id))).scalar() or 0
-    user_count = db.execute(sql_select(func.count(User.id))).scalar() or 0
-    gateway_count = db.execute(sql_select(func.count(MessageGateway.id))).scalar() or 0
+    message_count = (
+        db.execute(sql_select(func.count(Message.id))).scalar() or 0
+    )
+    user_count = (
+        db.execute(sql_select(func.count(User.id))).scalar() or 0
+    )
+    gateway_count = (
+        db.execute(sql_select(func.count(MessageGateway.id))).scalar()
+        or 0
+    )
     subscription_count = (
         db.execute(sql_select(func.count(Subscription.id))).scalar() or 0
     )
-    cache_count = db.execute(sql_select(func.count(StatisticsCache.id))).scalar() or 0
-    command_log_count = db.execute(sql_select(func.count(CommandLog.id))).scalar() or 0
+    cache_count = (
+        db.execute(sql_select(func.count(StatisticsCache.id))).scalar()
+        or 0
+    )
+    command_log_count = (
+        db.execute(sql_select(func.count(CommandLog.id))).scalar() or 0
+    )
 
     # Get oldest and newest message timestamps
-    oldest_message = db.execute(sql_select(func.min(Message.timestamp))).scalar()
-    newest_message = db.execute(sql_select(func.max(Message.timestamp))).scalar()
+    oldest_message = db.execute(
+        sql_select(func.min(Message.timestamp))
+    ).scalar()
+    newest_message = db.execute(
+        sql_select(func.max(Message.timestamp))
+    ).scalar()
 
     logger.info("Fetched database info: %.2f MB", db_size_mb)
 
@@ -756,8 +828,12 @@ def get_database_info(db: Session = Depends(get_db)) -> dict:
             + command_log_count,
         },
         "date_range": {
-            "oldest": oldest_message.isoformat() if oldest_message else None,
-            "newest": newest_message.isoformat() if newest_message else None,
+            "oldest": (
+                oldest_message.isoformat() if oldest_message else None
+            ),
+            "newest": (
+                newest_message.isoformat() if newest_message else None
+            ),
         },
     }
 
@@ -765,29 +841,23 @@ def get_database_info(db: Session = Depends(get_db)) -> dict:
 @router.delete("/admin/database/expire", tags=["Admin"])
 def expire_old_data(
     days: int = Query(
-        ..., ge=1, le=3650, description="Delete data older than this many days"
+        ...,
+        ge=1,
+        le=3650,
+        description="Delete data older than this many days",
     ),
     db: Session = Depends(get_db),
 ) -> dict:
     """
     Delete messages and related data older than the specified number of days.
     """
-    from sqlalchemy import select as sql_select
+    from sqlalchemy import func
     from src.models import Message, StatisticsCache, CommandLog
     from datetime import timedelta
 
     cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-    # Count messages to be deleted
-    messages_to_delete = (
-        db.execute(
-            sql_select(func.count(Message.id)).where(Message.timestamp < cutoff_date)
-        ).scalar()
-        or 0
-    )
-
     # Delete old messages (cascades to message_gateways)
-    db.execute(sql_select(Message).where(Message.timestamp < cutoff_date))
     deleted_messages = (
         db.query(Message).filter(Message.timestamp < cutoff_date).delete()
     )
@@ -801,13 +871,16 @@ def expire_old_data(
 
     # Delete old command logs
     deleted_logs = (
-        db.query(CommandLog).filter(CommandLog.timestamp < cutoff_date).delete()
+        db.query(CommandLog)
+        .filter(CommandLog.timestamp < cutoff_date)
+        .delete()
     )
 
     db.commit()
 
     logger.info(
-        "Expired data older than %s days: %s messages, %s cache entries, %s command logs",
+        "Expired data older than %s days: %s messages, "
+        "%s cache entries, %s command logs",
         days,
         deleted_messages,
         deleted_cache,

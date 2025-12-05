@@ -30,7 +30,10 @@ class SubscriptionRepository(BaseRepository):
             "Creating subscription user_id=%s type=%s", user_id, sub_type.value
         )
         try:
-            subscription = Subscription(user_id=user_id, subscription_type=sub_type)
+            subscription = Subscription(
+                user_id=user_id,
+                subscription_type=sub_type
+            )
             self.session.add(subscription)
             self.session.commit()
             return subscription
@@ -81,7 +84,7 @@ class SubscriptionRepository(BaseRepository):
         try:
             subscription = self.session.get(Subscription, subscription_id)
             if not subscription:
-                raise DatabaseError(f"Subscription {subscription_id} not found")
+                raise DatabaseError(f"Subscription {subscription_id} not found")  # noqa: E501
 
             allowed_fields = {"subscription_type", "is_active"}
             for key, value in kwargs.items():

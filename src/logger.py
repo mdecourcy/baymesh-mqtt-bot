@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import logging.config
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -32,7 +32,10 @@ def _build_logging_config(
         backup_count: Number of backup files to keep (default: 7)
     """
     formatter = {
-        "format": "%(asctime)s | %(levelname)s | %(name)s | %(message)s | %(process)d | %(threadName)s",
+        "format": (
+            "%(asctime)s | %(levelname)s | %(name)s | %(message)s | "
+            "%(process)d | %(threadName)s"
+        ),
         "datefmt": "%Y-%m-%d %H:%M:%S",
     }
 
@@ -122,7 +125,9 @@ def cleanup_old_logs(max_age_days: int = 30) -> int:
                 deleted_count += 1
                 logging.info(f"Deleted old log file: {log_file.name}")
         except Exception as e:
-            logging.warning(f"Failed to delete old log file {log_file.name}: {e}")
+            logging.warning(
+                f"Failed to delete old log file {log_file.name}: {e}"
+            )
 
     return deleted_count
 
@@ -147,7 +152,9 @@ def get_log_stats() -> dict:
                 {
                     "name": log_file.name,
                     "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "modified": datetime.fromtimestamp(
+                        stat.st_mtime
+                    ).isoformat(),
                 }
             )
             total_size += stat.st_size

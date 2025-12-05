@@ -4,6 +4,7 @@ Shared pytest fixtures for the Meshtastic statistics bot.
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 from typing import Generator, List
 
@@ -14,23 +15,33 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import os
-
+# Set environment variables before importing app modules
 os.environ.setdefault("MQTT_SERVER", "mqtt.example.com")
 os.environ.setdefault("MQTT_ROOT_TOPIC", "meshtastic/#")
 os.environ.setdefault("MESHTASTIC_CLI_PATH", "/bin/echo")
 
-from src.api.main import app
-from src.api import routes
-from src.database import Base
-from src.models import Message, Subscription, SubscriptionType, User
-from src.repository.message_repo import MessageRepository
-from src.repository.stats_cache_repo import StatisticsCacheRepository
-from src.repository.subscription_repo import SubscriptionRepository
-from src.repository.user_repo import UserRepository
-from src.services.meshtastic_service import MeshtasticService
-from src.services.stats_service import StatsService
-from src.services.subscription_service import SubscriptionService
+from src.api.main import app  # noqa: E402
+from src.api import routes  # noqa: E402
+from src.database import Base  # noqa: E402
+from src.models import (  # noqa: E402
+    Message,
+    Subscription,
+    SubscriptionType,
+    User,
+)
+from src.repository.message_repo import MessageRepository  # noqa: E402
+from src.repository.stats_cache_repo import (  # noqa: E402
+    StatisticsCacheRepository,
+)
+from src.repository.subscription_repo import (  # noqa: E402
+    SubscriptionRepository,
+)
+from src.repository.user_repo import UserRepository  # noqa: E402
+from src.services.meshtastic_service import MeshtasticService  # noqa: E402
+from src.services.stats_service import StatsService  # noqa: E402
+from src.services.subscription_service import (  # noqa: E402
+    SubscriptionService,
+)
 
 
 @pytest.fixture(scope="session")
@@ -61,7 +72,11 @@ def session(temp_db: Engine) -> Generator[Session, None, None]:
 
     connection = temp_db.connect()
     transaction = connection.begin()
-    SessionLocal = sessionmaker(bind=connection, future=True, expire_on_commit=False)
+    SessionLocal = sessionmaker(
+        bind=connection,
+        future=True,
+        expire_on_commit=False
+    )
     db_session = SessionLocal()
     try:
         yield db_session
@@ -87,7 +102,7 @@ def user_repo(session: Session) -> UserRepository:
 
 
 @pytest.fixture
-def stats_service(message_repo: MessageRepository, session: Session) -> StatsService:
+def stats_service(message_repo: MessageRepository, session: Session) -> StatsService:  # noqa: E501
     stats_cache_repo = StatisticsCacheRepository(session)
     return StatsService(message_repo, stats_cache_repo)
 
@@ -110,7 +125,11 @@ def mock_meshtastic_service(monkeypatch) -> MeshtasticService:
     service = MeshtasticService(cli_path="/bin/echo")
     sent_messages: List[tuple] = []
 
-    def mock_send_message(destination_id: int, message: str, timeout: int = 30) -> bool:
+    def mock_send_message(
+        destination_id: int,
+        message: str,
+        timeout: int = 30
+    ) -> bool:
         sent_messages.append((destination_id, message, timeout))
         return True
 
@@ -135,7 +154,7 @@ def sample_users(session: Session) -> List[User]:
 
 
 @pytest.fixture
-def sample_messages(session: Session, sample_users: List[User]) -> List[Message]:
+def sample_messages(session: Session, sample_users: List[User]) -> List[Message]:  # noqa: E501
     """
     Seed 20 sample messages for testing.
     """

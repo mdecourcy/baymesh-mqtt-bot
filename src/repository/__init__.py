@@ -4,8 +4,6 @@ Repository base classes and helpers.
 
 from __future__ import annotations
 
-from typing import Any
-
 from sqlalchemy.orm import Session
 
 from src.exceptions import DatabaseError

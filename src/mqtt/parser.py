@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional, Sequence, Tuple
 from uuid import uuid4
 
 try:
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes  # noqa: E501
 except ImportError:  # pragma: no cover - optional dependency
     Cipher = algorithms = modes = None  # type: ignore
 
@@ -43,7 +43,7 @@ class ProtobufMessageParser:
             mesh_pb2 = None
             mqtt_pb2 = None
             self.logger.warning(
-                "meshtastic protobuf definitions not available. Install the 'meshtastic' package."
+                "meshtastic protobuf definitions not available. Install the 'meshtastic' package."  # noqa: E501
             )
         self.mesh_pb2 = mesh_pb2
         self.mqtt_pb2 = mqtt_pb2
@@ -53,7 +53,7 @@ class ProtobufMessageParser:
 
         if include_default_key:
             default_key = (
-                self.settings.meshtastic_default_key or self.DEFAULT_DECRYPTION_KEY
+                self.settings.meshtastic_default_key or self.DEFAULT_DECRYPTION_KEY  # noqa: E501
             )
             self._append_key(default_key)
         if decryption_keys:
@@ -61,7 +61,10 @@ class ProtobufMessageParser:
                 self._append_key(key)
         if self._keyring:
             self.logger.info(
-                "Meshtastic parser loaded %s decryption key(s)", len(self._keyring)
+                "Meshtastic parser loaded %s decryption key(
+                    s)",
+                    len(self._keyring
+                )
             )
 
     # ------------------------------------------------------------------ #
@@ -110,7 +113,7 @@ class ProtobufMessageParser:
     ) -> Tuple[int, str, Optional[int]]:
         """
         Extract sender numeric ID, human readable name, and device role.
-        For NODEINFO packets, extract name and role from the User protobuf payload.
+        For NODEINFO packets, extract name and role from the User protobuf payload.  # noqa: E501
         Returns: (sender_id, sender_name, role)
         """
 
@@ -148,7 +151,7 @@ class ProtobufMessageParser:
 
         if not sender_name:
             if isinstance(sender_raw, (bytes, bytearray)):
-                sender_name = f"node-{binascii.hexlify(sender_raw).decode('ascii')}"
+                sender_name = f"node-{binascii.hexlify(sender_raw).decode('ascii')}"  # noqa: E501
             elif sender_raw is not None:
                 sender_name = f"node-{sender_raw}"
             else:
@@ -170,7 +173,10 @@ class ProtobufMessageParser:
             return
         if len(decoded) != 16:
             self.logger.warning(
-                "Ignoring decryption key with invalid length (%s bytes)", len(decoded)
+                "Ignoring decryption key with invalid length (
+                    %s bytes)",
+                    len(decoded
+                )
             )
             return
         if decoded not in self._keyring:
@@ -214,7 +220,9 @@ class ProtobufMessageParser:
         bitfield = getattr(decoded, "bitfield", None)
         if portnum_name == "TEXT_MESSAGE_APP" and bitfield == 0:
             self.logger.debug(
-                "Dropping TEXT_MESSAGE_APP packet %s because ok_to_mqtt is disabled (bitfield=0)",
+                "Dropping TEXT_MESSAGE_APP packet %s because ok_to_mqtt is disabled (
+                    bitfield=0
+                )",
                 getattr(packet, "id", None),
             )
             return None
@@ -269,7 +277,13 @@ class ProtobufMessageParser:
             )
             return None
 
-        rx_time = getattr(message, "rx_time", None) or getattr(message, "rxTime", None)
+        rx_time = getattr(
+            message,
+            "rx_time",
+            None) or getattr(message,
+            "rxTime",
+            None
+        )
         if rx_time:
             timestamp = datetime.fromtimestamp(rx_time, tz=timezone.utc)
         else:
@@ -283,10 +297,12 @@ class ProtobufMessageParser:
 
         # Apply the same ok_to_mqtt gating for legacy Data payloads, in case
         # they are published directly without a ServiceEnvelope wrapper.
-        bitfield = getattr(decoded, "bitfield", None) if decoded is not None else None
+        bitfield = getattr(decoded, "bitfield", None) if decoded is not None else None  # noqa: E501
         if portnum_name == "TEXT_MESSAGE_APP" and bitfield == 0:
             self.logger.debug(
-                "Dropping legacy TEXT_MESSAGE_APP packet %s because ok_to_mqtt is disabled (bitfield=0)",
+                "Dropping legacy TEXT_MESSAGE_APP packet %s because ok_to_mqtt is disabled (
+                    bitfield=0
+                )",
                 getattr(message, "id", None),
             )
             return None
@@ -303,7 +319,7 @@ class ProtobufMessageParser:
         )
 
         first_metadata = metadata[0] if metadata else None
-        rssi = getattr(first_metadata, "rssi", None) if first_metadata else None
+        rssi = getattr(first_metadata, "rssi", None) if first_metadata else None  # noqa: E501
         snr = getattr(first_metadata, "snr", None) if first_metadata else None
 
         parsed: Dict[str, Any] = {
@@ -326,7 +342,7 @@ class ProtobufMessageParser:
         if Cipher is None or algorithms is None or modes is None:
             if not self._cipher_warning_logged:
                 self.logger.warning(
-                    "cryptography package not available; unable to decrypt Meshtastic packets"
+                    "cryptography package not available; unable to decrypt Meshtastic packets"  # noqa: E501
                 )
                 self._cipher_warning_logged = True
             return None
@@ -385,7 +401,7 @@ class ProtobufMessageParser:
             return None
 
         try:
-            from meshtastic.mesh_pb2 import meshtastic_dot_portnums__pb2 as portnums_pb2
+            from meshtastic.mesh_pb2 import meshtastic_dot_portnums__pb2 as portnums_pb2  # noqa: E501
 
             return portnums_pb2.PortNum.Name(portnum_value)
         except Exception:

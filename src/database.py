@@ -31,7 +31,11 @@ engine: Engine = create_engine(
 )
 
 SessionLocal = sessionmaker(
-    bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+    expire_on_commit=False,
+    future=True,
 )
 
 Base = declarative_base()

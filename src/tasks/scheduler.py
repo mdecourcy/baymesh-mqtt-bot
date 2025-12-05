@@ -48,9 +48,9 @@ class SchedulerManager:
         self._broadcast_channel = broadcast_channel
         self._inactivity_alerts_enabled = inactivity_alerts_enabled
         self._inactivity_threshold_minutes = inactivity_threshold_minutes
-        self._inactivity_check_interval_minutes = inactivity_check_interval_minutes
+        self._inactivity_check_interval_minutes = inactivity_check_interval_minutes  # noqa: E501
         self._inactivity_alert_channel = inactivity_alert_channel
-        self._alerted_routers = set()  # Track which routers we've already alerted on
+        self._alerted_routers = set()  # Track which routers we've already alerted on  # noqa: E501
         self._scheduler: Optional[BackgroundScheduler] = None
         self.logger = get_logger(self.__class__.__name__)
 
@@ -68,7 +68,11 @@ class SchedulerManager:
 
         # Daily subscription reports
         trigger = CronTrigger(hour=self._send_hour, minute=self._send_minute)
-        self._scheduler.add_job(self.send_daily_reports, trigger, name="daily_reports")
+        self._scheduler.add_job(
+            self.send_daily_reports,
+            trigger,
+            name="daily_reports"
+        )
         self.logger.info(
             "Scheduler started; daily reports job set for %02d:%02d UTC",
             self._send_hour,
@@ -81,7 +85,7 @@ class SchedulerManager:
                 hour=self._broadcast_hour, minute=self._broadcast_minute
             )
             self._scheduler.add_job(
-                self.send_daily_broadcast, broadcast_trigger, name="daily_broadcast"
+                self.send_daily_broadcast, broadcast_trigger, name="daily_broadcast"  # noqa: E501
             )
             self.logger.info(
                 "Daily broadcast job set for %02d:%02d UTC to channel %d",
@@ -92,7 +96,11 @@ class SchedulerManager:
 
         # Daily log cleanup at 3 AM UTC
         cleanup_trigger = CronTrigger(hour=3, minute=0)
-        self._scheduler.add_job(self.cleanup_logs, cleanup_trigger, name="log_cleanup")
+        self._scheduler.add_job(
+            self.cleanup_logs,
+            cleanup_trigger,
+            name="log_cleanup"
+        )
         self.logger.info("Log cleanup job scheduled for 03:00 UTC daily")
 
         # Router inactivity checks
@@ -104,7 +112,7 @@ class SchedulerManager:
                 name="router_inactivity_check",
             )
             self.logger.info(
-                "Router inactivity checks enabled: every %d minutes, threshold %d minutes, alert channel %d",
+                "Router inactivity checks enabled: every %d minutes, threshold %d minutes, alert channel %d",  # noqa: E501
                 self._inactivity_check_interval_minutes,
                 self._inactivity_threshold_minutes,
                 self._inactivity_alert_channel,
@@ -139,10 +147,10 @@ class SchedulerManager:
             SubscriptionType.DAILY_HIGH,
         ):
             try:
-                subscribers = self._subscription_service.get_subscribers_by_type(
+                subscribers = self._subscription_service.get_subscribers_by_type(  # noqa: E501
                     sub_type.value
                 )
-                message = self._subscription_service.format_message_for_subscription(
+                message = self._subscription_service.format_message_for_subscription(  # noqa: E501
                     sub_type.value, stats
                 )
             except Exception:
@@ -184,7 +192,10 @@ class SchedulerManager:
         except Exception:
             self.logger.warning("Failed to cache daily stats", exc_info=True)
 
-        self.logger.info("Daily report job complete; sent %s messages", total_sent)
+        self.logger.info(
+            "Daily report job complete; sent %s messages",
+            total_sent
+        )
 
     def send_daily_broadcast(self) -> None:
         """
@@ -211,7 +222,9 @@ class SchedulerManager:
         for attempt in range(1, max_retries + 1):
             try:
                 self.logger.info(
-                    "Attempting to send daily broadcast to channel %d (attempt %d/%d)",
+                    "Attempting to send daily broadcast to channel %d (
+                        attempt %d/%d
+                    )",
                     self._broadcast_channel,
                     attempt,
                     max_retries,
@@ -220,12 +233,12 @@ class SchedulerManager:
                 # Send to channel (channel_id is passed directly, not as node ID)
                 # The broadcast_channel value represents the channel index (0-7)
                 success = self._meshtastic_service.send_message_to_channel(
-                    message=message, channel_id=self._broadcast_channel, timeout=60
+                    message=message, channel_id=self._broadcast_channel, timeout=60  # noqa: E501
                 )
 
                 if success:
                     self.logger.info(
-                        "Daily broadcast sent successfully to channel %d on attempt %d",
+                        "Daily broadcast sent successfully to channel %d on attempt %d",  # noqa: E501
                         self._broadcast_channel,
                         attempt,
                     )
@@ -238,7 +251,7 @@ class SchedulerManager:
                     )
             except Exception as e:
                 self.logger.error(
-                    "Failed to send daily broadcast to channel %d on attempt %d: %s",
+                    "Failed to send daily broadcast to channel %d on attempt %d: %s",  # noqa: E501
                     self._broadcast_channel,
                     attempt,
                     str(e),
@@ -247,7 +260,10 @@ class SchedulerManager:
 
             # Wait before retrying (unless this was the last attempt)
             if attempt < max_retries:
-                self.logger.info("Waiting %d seconds before retry...", retry_delay)
+                self.logger.info(
+                    "Waiting %d seconds before retry...",
+                    retry_delay
+                )
                 import time
 
                 time.sleep(retry_delay)
@@ -293,14 +309,14 @@ class SchedulerManager:
 
         try:
             settings = get_settings()
-            deleted = cleanup_old_logs(max_age_days=settings.log_retention_days)
+            deleted = cleanup_old_logs(max_age_days=settings.log_retention_days)  # noqa: E501
 
             if deleted > 0:
                 self.logger.info(
                     f"Log cleanup complete: deleted {deleted} old log file(s)"
                 )
             else:
-                self.logger.debug("Log cleanup complete: no old files to delete")
+                self.logger.debug("Log cleanup complete: no old files to delete")  # noqa: E501
         except Exception:
             self.logger.error("Failed to clean up old logs", exc_info=True)
 
@@ -343,7 +359,7 @@ class SchedulerManager:
                         # Calculate how long ago it was last seen
                         time_ago = datetime.utcnow() - last_seen
                         hours_ago = int(time_ago.total_seconds() / 3600)
-                        minutes_ago = int((time_ago.total_seconds() % 3600) / 60)
+                        minutes_ago = int((time_ago.total_seconds() % 3600) / 60)  # noqa: E501
 
                         # Format time string
                         if hours_ago > 0:
@@ -358,13 +374,13 @@ class SchedulerManager:
                         )
 
                         # Send alert
-                        success = self._meshtastic_service.send_message_to_channel(
-                            message=message, channel_id=self._inactivity_alert_channel
+                        success = self._meshtastic_service.send_message_to_channel(  # noqa: E501
+                            message=message, channel_id=self._inactivity_alert_channel  # noqa: E501
                         )
 
                         if success:
                             self.logger.info(
-                                "Sent inactivity alert for router %s (%s) - last seen %s ago",
+                                "Sent inactivity alert for router %s (%s) - last seen %s ago",  # noqa: E501
                                 username,
                                 gateway_id,
                                 time_str,
@@ -372,7 +388,7 @@ class SchedulerManager:
                             self._alerted_routers.add(gateway_id)
                         else:
                             self.logger.warning(
-                                "Failed to send inactivity alert for router %s",
+                                "Failed to send inactivity alert for router %s",  # noqa: E501
                                 username,
                             )
 
@@ -390,4 +406,7 @@ class SchedulerManager:
                 )
 
         except Exception:
-            self.logger.error("Failed to check router inactivity", exc_info=True)
+            self.logger.error(
+                "Failed to check router inactivity",
+                exc_info=True
+            )

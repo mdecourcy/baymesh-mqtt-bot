@@ -28,7 +28,7 @@ class SubscriptionService:
         self.stats_service = stats_service
         self.logger = get_logger(self.__class__.__name__)
 
-    def subscribe(self, user_mesh_id: int, subscription_type: str) -> Subscription:
+    def subscribe(self, user_mesh_id: int, subscription_type: str) -> Subscription:  # noqa: E501
         """
         Create or reactivate a subscription for a user.
         """
@@ -36,13 +36,20 @@ class SubscriptionService:
         sub_type = self._validate_subscription_type(subscription_type)
         user = self._get_user_by_mesh_id(user_mesh_id)
 
-        self.logger.info("Subscribing user %s to %s", user_mesh_id, sub_type.value)
+        self.logger.info(
+            "Subscribing user %s to %s",
+            user_mesh_id,
+            sub_type.value
+        )
         subscription = self.subscription_repo.get_by_user_id(user.id)
         if subscription:
             updates: Dict[str, object] = {"is_active": True}
             if subscription.subscription_type != sub_type:
                 updates["subscription_type"] = sub_type.value
-            subscription = self.subscription_repo.update(subscription.id, **updates)
+            subscription = self.subscription_repo.update(
+                subscription.id,
+                **updates
+            )
             return subscription
         return self.subscription_repo.create(user.id, sub_type)
 
@@ -58,7 +65,10 @@ class SubscriptionService:
                 "User %s has no active subscriptions to remove", user_mesh_id
             )
             return False
-        self.logger.info("Unsubscribing user %s from all subscriptions", user_mesh_id)
+        self.logger.info(
+            "Unsubscribing user %s from all subscriptions",
+            user_mesh_id
+        )
         self.subscription_repo.update(subscription.id, is_active=False)
         return True
 
@@ -69,9 +79,9 @@ class SubscriptionService:
 
         user = self._get_user_by_mesh_id(user_mesh_id)
         subscription = self.subscription_repo.get_by_user_id(user.id)
-        return [subscription] if subscription and subscription.is_active else []
+        return [subscription] if subscription and subscription.is_active else []  # noqa: E501
 
-    def get_subscribers_by_type(self, subscription_type: str) -> List[Subscription]:
+    def get_subscribers_by_type(self, subscription_type: str) -> List[Subscription]:  # noqa: E501
         """
         Return all active subscribers for a specific type.
         """
@@ -101,16 +111,19 @@ class SubscriptionService:
         avg_gateways = float(stats.get("average_gateways") or 0.0)
 
         if sub_type == SubscriptionType.DAILY_HIGH:
-            return f"🔴 Peak gateways today: {max_gateways} (from {count} messages)"
+            return f"🔴 Peak gateways today: {max_gateways} (from {count} messages)"  # noqa: E501
         if sub_type == SubscriptionType.DAILY_LOW:
-            return f"🔵 Minimum gateways today: {min_gateways} (from {count} messages)"
-        return f"🟡 Average gateways today: {avg_gateways:.1f} (from {count} messages)"
+            return f"🔵 Minimum gateways today: {min_gateways} (from {count} messages)"  # noqa: E501
+        return f"🟡 Average gateways today: {avg_gateways:.1f} (from {count} messages)"  # noqa: E501
 
-    def _validate_subscription_type(self, subscription_type: str) -> SubscriptionType:
+    def _validate_subscription_type(self, subscription_type: str) -> SubscriptionType:  # noqa: E501
         try:
             return SubscriptionType(subscription_type)
         except ValueError as exc:
-            self.logger.error("Invalid subscription type: %s", subscription_type)
+            self.logger.error(
+                "Invalid subscription type: %s",
+                subscription_type
+            )
             raise SubscriptionError(
                 f"Invalid subscription type: {subscription_type}"
             ) from exc
@@ -118,5 +131,5 @@ class SubscriptionService:
     def _get_user_by_mesh_id(self, user_mesh_id: int):
         user = self.user_repo.get_by_user_id(user_mesh_id)
         if not user:
-            raise SubscriptionError(f"User with mesh id {user_mesh_id} not found")
+            raise SubscriptionError(f"User with mesh id {user_mesh_id} not found")  # noqa: E501
         return user

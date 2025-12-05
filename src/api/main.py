@@ -4,7 +4,6 @@ FastAPI application entrypoint.
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from pathlib import Path
@@ -31,7 +30,10 @@ from .routes import router
 
 app = FastAPI(
     title="Meshtastic Statistics Bot API",
-    description="REST endpoints for monitoring and testing Meshtastic mesh statistics.",
+    description=(
+        "REST endpoints for monitoring and testing "
+        "Meshtastic mesh statistics."
+    ),
     version="0.1.0",
 )
 
@@ -72,9 +74,15 @@ async def request_context_middleware(request: Request, call_next: Callable):
     return response
 
 
-def _error_response(status_code: int, error: str, detail: str) -> JSONResponse:
-    payload = ErrorResponse(error=error, detail=detail, status_code=status_code)
-    return JSONResponse(status_code=status_code, content=payload.model_dump())
+def _error_response(
+    status_code: int, error: str, detail: str
+) -> JSONResponse:
+    payload = ErrorResponse(
+        error=error, detail=detail, status_code=status_code
+    )
+    return JSONResponse(
+        status_code=status_code, content=payload.model_dump()
+    )
 
 
 @app.exception_handler(SubscriptionError)
@@ -86,13 +94,17 @@ async def subscription_error_handler(
 
 
 @app.exception_handler(StatisticsError)
-async def statistics_error_handler(_: Request, exc: StatisticsError) -> JSONResponse:
+async def statistics_error_handler(
+    _: Request, exc: StatisticsError
+) -> JSONResponse:
     logger.error("Statistics error: %s", exc, exc_info=True)
     return _error_response(500, "statistics_error", str(exc))
 
 
 @app.exception_handler(DatabaseError)
-async def database_error_handler(_: Request, exc: DatabaseError) -> JSONResponse:
+async def database_error_handler(
+    _: Request, exc: DatabaseError
+) -> JSONResponse:
     logger.error("Database error: %s", exc, exc_info=True)
     return _error_response(500, "database_error", str(exc))
 
@@ -106,21 +118,29 @@ async def meshtastic_error_handler(
 
 
 @app.exception_handler(MQTTConnectionError)
-async def mqtt_error_handler(_: Request, exc: MQTTConnectionError) -> JSONResponse:
+async def mqtt_error_handler(
+    _: Request, exc: MQTTConnectionError
+) -> JSONResponse:
     logger.error("MQTT connection error: %s", exc, exc_info=True)
     return _error_response(503, "mqtt_error", str(exc))
 
 
 @app.exception_handler(MessageParsingError)
-async def parsing_error_handler(_: Request, exc: MessageParsingError) -> JSONResponse:
+async def parsing_error_handler(
+    _: Request, exc: MessageParsingError
+) -> JSONResponse:
     logger.error("Message parsing error: %s", exc, exc_info=True)
     return _error_response(400, "message_parsing_error", str(exc))
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+async def unhandled_exception_handler(
+    _: Request, exc: Exception
+) -> JSONResponse:
     logger.error("Unhandled exception: %s", exc, exc_info=True)
-    return _error_response(500, "internal_error", "An unexpected error occurred.")
+    return _error_response(
+        500, "internal_error", "An unexpected error occurred."
+    )
 
 
 app.include_router(router)
@@ -129,7 +149,9 @@ app.include_router(router)
 dashboard_dist = Path(__file__).parent.parent.parent / "dashboard" / "dist"
 if dashboard_dist.exists():
     app.mount(
-        "/", StaticFiles(directory=str(dashboard_dist), html=True), name="dashboard"
+        "/",
+        StaticFiles(directory=str(dashboard_dist), html=True),
+        name="dashboard",
     )
     logger.info("Serving dashboard from %s", dashboard_dist)
 else:

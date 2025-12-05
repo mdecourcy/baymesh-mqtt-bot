@@ -67,7 +67,10 @@ def test_parser_decrypts_encrypted_packet_with_default_key():
 
 def test_parser_drops_encrypted_packet_without_keys():
     envelope = _build_envelope("secret text", encrypted=True)
-    parser = ProtobufMessageParser(decryption_keys=[], include_default_key=False)
+    parser = ProtobufMessageParser(
+        decryption_keys=[],
+        include_default_key=False
+    )
     parsed = parser.parse_message(envelope.SerializeToString())
     assert parsed is None
 
@@ -75,7 +78,10 @@ def test_parser_drops_encrypted_packet_without_keys():
 def test_parser_skips_json_topics(caplog):
     parser = ProtobufMessageParser()
     with caplog.at_level("WARNING"):
-        parsed = parser.parse_message(b'{"foo": 1}', topic="msh/US/bayarea/2/json")
+        parsed = parser.parse_message(
+            b'{"foo": 1}',
+            topic="msh/US/bayarea/2/json"
+        )
     assert parsed is None
     assert not any(
         "Failed to parse protobuf payload" in record.message

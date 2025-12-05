@@ -45,7 +45,7 @@ class MQTTClient:
             decryption_keys=self.config.meshtastic_decryption_keys,
             include_default_key=self.config.meshtastic_include_default_key,
         )
-        self._packet_queue = MeshPacketQueue(grouping_duration=grouping_duration)
+        self._packet_queue = MeshPacketQueue(grouping_duration=grouping_duration)  # noqa: E501
         self._client = self._build_client()
         self._connected = False
         self._message_count_today = 0
@@ -95,7 +95,7 @@ class MQTTClient:
             self.logger.error(
                 "Failed to connect to MQTT broker: %s", exc, exc_info=True
             )
-            raise MQTTConnectionError("Could not connect to MQTT broker") from exc
+            raise MQTTConnectionError("Could not connect to MQTT broker") from exc  # noqa: E501
 
     def disconnect(self) -> None:
         """
@@ -108,7 +108,10 @@ class MQTTClient:
         try:
             self._client.disconnect()
         except Exception:
-            self.logger.warning("MQTT disconnect encountered an error", exc_info=True)
+            self.logger.warning(
+                "MQTT disconnect encountered an error",
+                exc_info=True
+            )
 
     @property
     def message_count(self) -> int:
@@ -125,7 +128,7 @@ class MQTTClient:
         if not self._connected_at:
             return "—"
 
-        uptime_seconds = (datetime.utcnow() - self._connected_at).total_seconds()
+        uptime_seconds = (datetime.utcnow() - self._connected_at).total_seconds()  # noqa: E501
 
         if uptime_seconds < 60:
             return f"{int(uptime_seconds)}s"
@@ -224,18 +227,21 @@ class MQTTClient:
         return client
 
     # MQTT callbacks ---------------------------------------------------- #
-    def _on_connect(self, client, userdata, flags, rc, properties=None):  # type: ignore[override]
+    def _on_connect(self, client, userdata, flags, rc, properties=None):  # type: ignore[override]  # noqa: E501
         if rc == 0:
             self._connected = True
             self._connected_at = datetime.utcnow()
             topic = f"{self.config.mqtt_root_topic}/#"
-            self.logger.info("Connected to MQTT broker. Subscribing to %s", topic)
+            self.logger.info(
+                "Connected to MQTT broker. Subscribing to %s",
+                topic
+            )
             client.subscribe(topic)
         else:
             self.logger.error("MQTT connection failed with code %s", rc)
             raise MQTTConnectionError(f"MQTT connection failed with code {rc}")
 
-    def _on_disconnect(self, client, userdata, rc, properties=None):  # type: ignore[override]
+    def _on_disconnect(self, client, userdata, rc, properties=None):  # type: ignore[override]  # noqa: E501
         self._connected = False
         if rc == mqtt.MQTT_ERR_SUCCESS:
             self.logger.info("Disconnected from MQTT broker")
@@ -295,10 +301,10 @@ class MQTTClient:
 
     def _handle_late_gateway(self, parsed: dict) -> None:
         """
-        Handle a gateway relay that arrived after the message was already persisted.
+        Handle a gateway relay that arrived after the message was already persisted.  # noqa: E501
 
-        This happens when a gateway forwards a message more than 10 seconds after
-        the first gateway relay. We add it directly to the existing message record.
+        This happens when a gateway forwards a message more than 10 seconds after  # noqa: E501
+        the first gateway relay. We add it directly to the existing message record.  # noqa: E501
         """
         try:
             message_id = str(parsed.get("message_id"))
@@ -311,7 +317,7 @@ class MQTTClient:
             message = self._message_repo.get_by_message_id(message_id)
             if not message:
                 self.logger.warning(
-                    "Late gateway %s for unknown message %s", gateway_id, message_id
+                    "Late gateway %s for unknown message %s", gateway_id, message_id  # noqa: E501
                 )
                 return
 
@@ -331,7 +337,7 @@ class MQTTClient:
         """
         Process NODEINFO packet to update user information.
 
-        NODEINFO packets contain user details like long_name, short_name, hw_model, and role.
+        NODEINFO packets contain user details like long_name, short_name, hw_model, and role.  # noqa: E501
         We extract this and update the user record in the database.
         """
         try:
@@ -362,7 +368,10 @@ class MQTTClient:
                     and not sender_name.startswith("node-")
                 ):
                     old_name = user.username
-                    user = self._user_repo.update_username(sender_id, sender_name)
+                    user = self._user_repo.update_username(
+                        sender_id,
+                        sender_name
+                    )
                     self.logger.info(
                         "Updated user name: %s → %s (%s)",
                         old_name,
@@ -381,13 +390,16 @@ class MQTTClient:
                     )
 
         except Exception:
-            self.logger.error("Failed to process NODEINFO packet", exc_info=True)
+            self.logger.error(
+                "Failed to process NODEINFO packet",
+                exc_info=True
+            )
 
     def _process_queue(self) -> None:
         """
         Background thread that processes packet groups from the queue.
 
-        Runs every 5 seconds and persists groups older than the grouping duration.
+        Runs every 5 seconds and persists groups older than the grouping duration.  # noqa: E501
         """
         self.logger.info("Packet queue processor started")
 
@@ -404,7 +416,10 @@ class MQTTClient:
                     self._packet_queue.cleanup_old_hashes()
 
             except Exception:
-                self.logger.error("Error processing packet queue", exc_info=True)
+                self.logger.error(
+                    "Error processing packet queue",
+                    exc_info=True
+                )
 
             time.sleep(5)
 
@@ -438,7 +453,7 @@ class MQTTClient:
         # Parse timestamp
         timestamp = first_env.get("timestamp")
         if isinstance(timestamp, datetime):
-            timestamp_dt = timestamp.astimezone(timezone.utc).replace(tzinfo=None)
+            timestamp_dt = timestamp.astimezone(timezone.utc).replace(tzinfo=None)  # noqa: E501
         else:
             timestamp_dt = datetime.utcnow()
 

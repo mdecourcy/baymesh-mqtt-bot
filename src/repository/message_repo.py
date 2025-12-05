@@ -40,7 +40,11 @@ class MessageRepository(BaseRepository):
     ) -> Message:
         """Persist a new message."""
 
-        self.logger.debug("Creating message %s for sender %s", message_id, sender_id)
+        self.logger.debug(
+            "Creating message %s for sender %s",
+            message_id,
+            sender_id
+        )
         try:
             initial_gateway_count = gateway_count if not gateway_id else 0
             message = Message(
@@ -89,7 +93,7 @@ class MessageRepository(BaseRepository):
         except Exception as exc:
             self._handle_exception("get message by message_id", exc)
 
-    def get_last_n(self, n: int, include_gateways: bool = False) -> List[Message]:
+    def get_last_n(self, n: int, include_gateways: bool = False) -> List[Message]:  # noqa: E501
         """Retrieve the latest N messages ordered by timestamp desc."""
 
         self.logger.debug("Fetching last %s messages", n)
@@ -99,7 +103,7 @@ class MessageRepository(BaseRepository):
                 stmt = stmt.options(
                     joinedload(Message.gateways), joinedload(Message.sender)
                 )
-                return list(self.session.execute(stmt).scalars().unique().all())
+                return list(self.session.execute(stmt).scalars().unique().all())  # noqa: E501
             return list(self.session.execute(stmt).scalars().all())
         except Exception as exc:
             self._handle_exception("get last n messages", exc)
@@ -126,11 +130,18 @@ class MessageRepository(BaseRepository):
     ) -> List[Message]:
         """Retrieve messages between two timestamps."""
 
-        self.logger.debug("Fetching messages between %s and %s", start_date, end_date)
+        self.logger.debug(
+            "Fetching messages between %s and %s",
+            start_date,
+            end_date
+        )
         try:
             stmt = (
                 select(Message)
-                .where(Message.timestamp >= start_date, Message.timestamp <= end_date)
+                .where(
+                    Message.timestamp >= start_date,
+                    Message.timestamp <= end_date
+                )
                 .order_by(Message.timestamp.asc())
             )
             return list(self.session.execute(stmt).scalars().all())
@@ -157,7 +168,11 @@ class MessageRepository(BaseRepository):
     def get_last_n_for_user(self, user_id: int, n: int) -> List[Message]:
         """Retrieve the latest N messages for a specific user."""
 
-        self.logger.debug("Fetching last %s messages for user_id=%s", n, user_id)
+        self.logger.debug(
+            "Fetching last %s messages for user_id=%s",
+            n,
+            user_id
+        )
         try:
             stmt = (
                 select(Message)
@@ -208,7 +223,10 @@ class MessageRepository(BaseRepository):
             if existing:
                 return existing
 
-            record = MessageGateway(message_id=message.id, gateway_id=gateway_id)
+            record = MessageGateway(
+                message_id=message.id,
+                gateway_id=gateway_id
+            )
             self.session.add(record)
             self.session.flush()
 
@@ -236,9 +254,9 @@ class MessageRepository(BaseRepository):
         self, threshold_minutes: int
     ) -> List[tuple[str, datetime, str]]:
         """
-        Find routers (devices with ROUTER or ROUTER_CLIENT role) that haven't been seen in the last N minutes.
+        Find routers (devices with ROUTER or ROUTER_CLIENT role) that haven't been seen in the last N minutes.  # noqa: E501
         Returns a list of (gateway_id, last_seen_timestamp, username) tuples.
-        Only includes devices that have the ROUTER (2) or ROUTER_CLIENT (3) role.
+        Only includes devices that have the ROUTER (2) or ROUTER_CLIENT (3) role.  # noqa: E501
         """
         cutoff_time = datetime.utcnow() - timedelta(minutes=threshold_minutes)
 

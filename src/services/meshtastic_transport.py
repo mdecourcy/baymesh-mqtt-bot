@@ -23,7 +23,7 @@ def build_meshtastic_interface(connection_url: str):
     """
 
     if not connection_url:
-        raise MeshtasticTransportError("MESHTASTIC_CONNECTION_URL not configured")
+        raise MeshtasticTransportError("MESHTASTIC_CONNECTION_URL not configured")  # noqa: E501
 
     if connection_url.startswith("serial://"):
         path = connection_url.replace("serial://", "", 1)
@@ -41,7 +41,7 @@ def build_meshtastic_interface(connection_url: str):
             )
         host, _, port_str = host_port.partition(":")
         if not host:
-            raise MeshtasticTransportError("TCP connection URL must include a hostname")
+            raise MeshtasticTransportError("TCP connection URL must include a hostname")  # noqa: E501
         port = int(port_str) if port_str else 4403
         return tcp_interface.TCPInterface(hostname=host, portNumber=port)
 

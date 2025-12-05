@@ -46,13 +46,19 @@ class MetricType(str, Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     user_id: Mapped[int] = mapped_column(
         Integer, nullable=False, unique=True, index=True
     )
     username: Mapped[str] = mapped_column(String(255), nullable=False)
-    mesh_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    role: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    mesh_id: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
+    role: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, nullable=False
     )
@@ -72,16 +78,23 @@ class User(Base):
 class Message(Base):
     __tablename__ = "messages"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     message_id: Mapped[str] = mapped_column(
         String(50), nullable=False, unique=True, index=True
     )
     sender_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     sender_name: Mapped[str] = mapped_column(String(255), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    gateway_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    gateway_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1
+    )
     rssi: Mapped[int | None] = mapped_column(Integer, nullable=True)
     snr: Mapped[float | None] = mapped_column(Float, nullable=True)
     payload: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -94,7 +107,9 @@ class Message(Base):
 
     sender: Mapped["User"] = relationship("User", back_populates="messages")
     gateways: Mapped[list["MessageGateway"]] = relationship(
-        "MessageGateway", back_populates="message", cascade="all, delete-orphan"
+        "MessageGateway",
+        back_populates="message",
+        cascade="all, delete-orphan",
     )
 
 
@@ -102,33 +117,49 @@ class MessageGateway(Base):
     __tablename__ = "message_gateways"
     __table_args__ = (
         UniqueConstraint(
-            "message_id", "gateway_id", name="uq_message_gateways_message_gateway"
+            "message_id",
+            "gateway_id",
+            name="uq_message_gateways_message_gateway",
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     message_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
+        Integer,
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        nullable=False,
     )
     gateway_id: Mapped[str] = mapped_column(String(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, nullable=False
     )
 
-    message: Mapped["Message"] = relationship("Message", back_populates="gateways")
+    message: Mapped["Message"] = relationship(
+        "Message", back_populates="gateways"
+    )
 
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
     )
     subscription_type: Mapped[SubscriptionType] = mapped_column(
-        SAEnum(SubscriptionType, name="subscription_type_enum"), nullable=False
+        SAEnum(SubscriptionType, name="subscription_type_enum"),
+        nullable=False,
     )
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, nullable=False
     )
@@ -136,19 +167,28 @@ class Subscription(Base):
         DateTime, default=utcnow, onupdate=utcnow, nullable=False
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="subscription")
+    user: Mapped["User"] = relationship(
+        "User", back_populates="subscription"
+    )
 
 
 class StatisticsCache(Base):
     __tablename__ = "statistics_cache"
     __table_args__ = (
         Index(
-            "ix_statistics_cache_metric", "metric_type", "metric_date", "metric_hour"
+            "ix_statistics_cache_metric",
+            "metric_type",
+            "metric_date",
+            "metric_hour",
         ),
-        CheckConstraint("metric_hour BETWEEN 0 AND 23", name="ck_metric_hour_range"),
+        CheckConstraint(
+            "metric_hour BETWEEN 0 AND 23", name="ck_metric_hour_range"
+        ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     metric_type: Mapped[MetricType] = mapped_column(
         SAEnum(MetricType, name="metric_type_enum"), nullable=False
     )
@@ -171,13 +211,19 @@ class CommandLog(Base):
         Index("ix_command_logs_command", "command"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     mesh_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
     command: Mapped[str] = mapped_column(String(255), nullable=False)
-    response_sent: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    rate_limited: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    response_sent: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
+    rate_limited: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
     timestamp: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, nullable=False
     )
