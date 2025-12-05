@@ -135,12 +135,18 @@ class MeshtasticCommandService:
                     exc_info=True,
                 )
             if self._running:
-                self.logger.info("Retrying Meshtastic command listener in 5s")
-                time.sleep(5)
+                backoff = min(30, 5 * self._restart_count)
+                self.logger.info(
+                    "Retrying Meshtastic command listener in %ss", backoff
+                )
+                time.sleep(backoff)
 
     def _initialize_listener(self) -> None:
         self._cleanup_interface()
         try:
+            # If using tcp://, probe reachability before building interface to avoid
+            # spinning the underlying meshtastic TCPInterface when the radio is down.
+            self._probe_tcp_endpoint()
             self._interface = build_meshtastic_interface(
                 self.config.meshtastic_connection_url
             )
@@ -216,6 +222,31 @@ class MeshtasticCommandService:
             self.logger.debug(
                 "Could not tune Meshtastic TCP socket timeout", exc_info=True
             )
+
+    def _probe_tcp_endpoint(self) -> None:
+        """
+        Light-weight TCP connectivity probe to avoid busy-spin when radio is down.
+
+        For tcp:// endpoints, attempt a short socket connect; if it fails, raise
+        to trigger backoff in the run loop.
+        """
+        if not self.config.meshtastic_connection_url:
+            return
+        url = self.config.meshtastic_connection_url
+        if not url.startswith("tcp://"):
+            return
+        try:
+            import socket
+
+            host_port = url.replace("tcp://", "", 1)
+            host, _, port_str = host_port.partition(":")
+            port = int(port_str) if port_str else 4403
+            with socket.create_connection((host, port), timeout=3):
+                return
+        except Exception as exc:
+            raise MeshtasticTransportError(
+                f"TCP endpoint unreachable: {url}"
+            ) from exc
 
     def _on_connection_lost(self, *_args, **_kwargs) -> None:
         self._schedule_reconnect("Meshtastic connection lost")
