@@ -477,7 +477,7 @@ class MQTTClient:
         else:
             timestamp_dt = now_utc
 
-        # If the timestamp is more than 5 minutes in the future, trust server time
+        # If the timestamp is >5 minutes in the future, trust server time
         if timestamp_dt > now_utc + timedelta(minutes=5):
             self.logger.warning(
                 "Clamping future-dated message timestamp from %s to now",
