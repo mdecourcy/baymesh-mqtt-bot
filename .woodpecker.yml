@@ -72,12 +72,18 @@ steps:
     image: /bin/sh
     commands:
       - set -ex
-      # Deploy latest code to the baymesh-mqtt-bot host and restart systemd service
+      # Deploy latest code to the baymesh-mqtt-bot host, rebuild dashboard, and restart systemd service
       - |
         ssh -i /root/.ssh/woodpecker-deploy -o StrictHostKeyChecking=no root@192.168.8.114 << 'EOF'
         set -ex
         cd /opt/baymesh-mqtt-bot
         git pull --ff-only
+        # Ensure Node.js tooling is available for dashboard build
+        command -v npm >/dev/null 2>&1 || (apt-get update && apt-get install -y nodejs npm)
+        cd dashboard
+        npm ci
+        npm run build
+        cd ..
         systemctl restart meshtastic-stats-bot.service
         EOF
     when:
