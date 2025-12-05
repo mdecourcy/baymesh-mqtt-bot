@@ -39,7 +39,7 @@ PUBLIC_CHANNEL_ROLES = {
 
 
 class MeshtasticCommandService:
-    """Listens for Meshtastic text commands and responds with stats/subscription info."""
+    """Listens for Meshtastic text commands and responds with stats."""
 
     COMMAND_PREFIX = "!"
 
@@ -291,7 +291,7 @@ class MeshtasticCommandService:
             "Processing command from %s: %s", meshtastic_node_id, normalized
         )
 
-        # Convert Meshtastic node ID to database user.id for logging and queries
+        # Convert Meshtastic node ID to database user.id
         db_user = self.subscription_service.user_repo.get_by_user_id(
             meshtastic_node_id
         )  # noqa: E501
@@ -468,7 +468,7 @@ class MeshtasticCommandService:
             for idx, chunk in enumerate(chunks):
                 if self._interface:
                     self.logger.info(
-                        "Sending Meshtastic direct response via interface to %s (chunk %s/%s, len=%s)",
+                        "Sending direct response to %s (chunk %s/%s, len=%s)",
                         raw_destination
                         if raw_destination is not None
                         else destination_id,
@@ -492,7 +492,7 @@ class MeshtasticCommandService:
                         time.sleep(5.0)
                 else:
                     self.logger.info(
-                        "Sending Meshtastic response via service to %s (len=%s)",
+                        "Sending response via service to %s (len=%s)",
                         destination_id,
                         len(chunk),
                     )
@@ -501,9 +501,8 @@ class MeshtasticCommandService:
             self.logger.error(
                 "Failed to send Meshtastic response", exc_info=True
             )
-            # If sending fails, the underlying interface is very likely in a bad
-            # state (e.g. BrokenPipeError). Trigger a reconnect so future
-            # commands can still be processed.
+            # If sending fails, underlying interface likely in bad state.
+            # Trigger reconnect so future commands can still be processed.
             self._schedule_reconnect("Failed to send Meshtastic response", exc)
 
     def _post_to_channel(self, message: str) -> None:
@@ -514,14 +513,14 @@ class MeshtasticCommandService:
             for chunk in self._chunk_message(message):
                 if self._interface:
                     self.logger.info(
-                        "Posting Meshtastic stats message to channel %s via interface (len=%s)",
+                        "Posting stats to channel %s via interface (len=%s)",
                         channel_id,
                         len(chunk),
                     )
                     self._interface.sendText(chunk, destinationId=channel_id)
                 else:
                     self.logger.info(
-                        "Posting Meshtastic stats message to channel %s via service (len=%s)",
+                        "Posting stats to channel %s via service (len=%s)",
                         channel_id,
                         len(chunk),
                     )
@@ -578,7 +577,7 @@ class MeshtasticCommandService:
         return True
 
     def _cleanup_rate_limit_tracker(self) -> None:
-        """Remove rate limit entries for users who haven't sent commands recently."""
+        """Remove rate limit entries for inactive users."""
         current_time = time.time()
         cutoff_time = current_time - (
             self.rate_limit_seconds * 10
@@ -627,7 +626,7 @@ class MeshtasticCommandService:
         )
         normalized = self._normalize_portnum(portnum)
         if normalized is None:
-            # Some firmwares omit portnum for plain text; rely on text presence.
+            # Some firmwares omit portnum; rely on text presence.
             return bool(self._get_value(decoded, "text"))
         return normalized == "TEXT_MESSAGE_APP"
 

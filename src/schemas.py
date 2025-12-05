@@ -4,7 +4,7 @@ Pydantic request/response schemas for the Meshtastic statistics bot.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime  # noqa: F401
 from typing import List, Optional
 
 from pydantic import BaseModel, Field

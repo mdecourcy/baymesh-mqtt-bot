@@ -222,7 +222,7 @@ class ProtobufMessageParser:
         bitfield = getattr(decoded, "bitfield", None)
         if portnum_name == "TEXT_MESSAGE_APP" and bitfield == 0:
             self.logger.debug(
-                "Dropping TEXT_MESSAGE_APP packet %s (ok_to_mqtt disabled, bitfield=0)",
+                "Dropping TEXT_MESSAGE_APP packet %s (ok_to_mqtt off)",
                 getattr(packet, "id", None),
             )
             return None
@@ -298,7 +298,7 @@ class ProtobufMessageParser:
         )  # noqa: E501
         if portnum_name == "TEXT_MESSAGE_APP" and bitfield == 0:
             self.logger.debug(
-                "Dropping legacy TEXT_MESSAGE_APP packet %s (ok_to_mqtt disabled, bitfield=0)",
+                "Dropping legacy TEXT_MESSAGE_APP packet %s (ok_to_mqtt off)",
                 getattr(message, "id", None),
             )
             return None
