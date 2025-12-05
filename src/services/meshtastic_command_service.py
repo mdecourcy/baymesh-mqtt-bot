@@ -208,8 +208,11 @@ class MeshtasticCommandService:
             stream = getattr(self._interface, "stream", None)
             sock = getattr(stream, "sock", None)
             if sock and hasattr(sock, "settimeout"):
-                sock.settimeout(1.0)
-                self.logger.info("Applied 1s socket timeout to Meshtastic TCP interface")
+                # Use a larger timeout to reduce poll frequency further.
+                sock.settimeout(5.0)
+                self.logger.info(
+                    "Applied 5s socket timeout to Meshtastic TCP interface"
+                )
         except Exception:
             self.logger.debug(
                 "Could not tune Meshtastic TCP socket timeout", exc_info=True
