@@ -7,7 +7,7 @@ from __future__ import annotations
 import ssl
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 from uuid import uuid4
 
@@ -467,14 +467,23 @@ class MQTTClient:
                 int(sender_id), sender_name or f"node-{sender_id}", None
             )
 
-        # Parse timestamp
+        # Parse timestamp; clamp if device clock is far in the future
+        now_utc = datetime.utcnow()
         timestamp = first_env.get("timestamp")
         if isinstance(timestamp, datetime):
             timestamp_dt = timestamp.astimezone(timezone.utc).replace(
                 tzinfo=None
             )  # noqa: E501
         else:
-            timestamp_dt = datetime.utcnow()
+            timestamp_dt = now_utc
+
+        # If the timestamp is more than 5 minutes in the future, trust server time
+        if timestamp_dt > now_utc + timedelta(minutes=5):
+            self.logger.warning(
+                "Clamping future-dated message timestamp from %s to now",
+                timestamp_dt,
+            )
+            timestamp_dt = now_utc
 
         message_id = first_env.get("message_id") or f"mqtt-{uuid4().hex}"
 
