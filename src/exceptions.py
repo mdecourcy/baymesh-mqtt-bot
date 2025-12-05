@@ -25,4 +25,3 @@ class SubscriptionError(Exception):
 
 class StatisticsError(Exception):
     """Raised when statistics calculations fail."""
-

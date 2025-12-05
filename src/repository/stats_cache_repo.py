@@ -21,12 +21,18 @@ class StatisticsCacheRepository(BaseRepository):
         super().__init__(session)
 
     def get_entry(
-        self, metric_type: MetricType, metric_date: date, metric_hour: Optional[int] = None
+        self,
+        metric_type: MetricType,
+        metric_date: date,
+        metric_hour: Optional[int] = None,
     ) -> Optional[StatisticsCache]:
         """Fetch a cached metric entry."""
 
         self.logger.debug(
-            "Fetching cache entry metric=%s date=%s hour=%s", metric_type.value, metric_date, metric_hour
+            "Fetching cache entry metric=%s date=%s hour=%s",
+            metric_type.value,
+            metric_date,
+            metric_hour,
         )
         try:
             stmt = select(StatisticsCache).where(
@@ -82,13 +88,12 @@ class StatisticsCacheRepository(BaseRepository):
 
         self.logger.debug("Deleting cache entries for date %s", metric_date)
         try:
-            stmt = select(StatisticsCache).where(StatisticsCache.metric_date == metric_date)
+            stmt = select(StatisticsCache).where(
+                StatisticsCache.metric_date == metric_date
+            )
             entries = self.session.execute(stmt).scalars().all()
             for entry in entries:
                 self.session.delete(entry)
             self.session.commit()
         except Exception as exc:
             self._handle_exception("delete statistics cache entries", exc)
-
-
-

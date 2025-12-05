@@ -20,11 +20,15 @@ class SubscriptionRepository(BaseRepository):
     def __init__(self, session: Session):
         super().__init__(session)
 
-    def create(self, user_id: int, subscription_type: Union[str, SubscriptionType]) -> Subscription:
+    def create(
+        self, user_id: int, subscription_type: Union[str, SubscriptionType]
+    ) -> Subscription:
         """Create a new subscription for a user."""
 
         sub_type = SubscriptionType(subscription_type)
-        self.logger.debug("Creating subscription user_id=%s type=%s", user_id, sub_type.value)
+        self.logger.debug(
+            "Creating subscription user_id=%s type=%s", user_id, sub_type.value
+        )
         try:
             subscription = Subscription(user_id=user_id, subscription_type=sub_type)
             self.session.add(subscription)
@@ -53,13 +57,17 @@ class SubscriptionRepository(BaseRepository):
         except Exception as exc:
             self._handle_exception("get all active subscriptions", exc)
 
-    def get_by_type(self, subscription_type: Union[str, SubscriptionType]) -> List[Subscription]:
+    def get_by_type(
+        self, subscription_type: Union[str, SubscriptionType]
+    ) -> List[Subscription]:
         """Return subscriptions filtered by type."""
 
         sub_type = SubscriptionType(subscription_type)
         self.logger.debug("Fetching subscriptions of type %s", sub_type.value)
         try:
-            stmt = select(Subscription).where(Subscription.subscription_type == sub_type)
+            stmt = select(Subscription).where(
+                Subscription.subscription_type == sub_type
+            )
             return list(self.session.execute(stmt).scalars().all())
         except Exception as exc:
             self._handle_exception("get subscriptions by type", exc)
@@ -67,7 +75,9 @@ class SubscriptionRepository(BaseRepository):
     def update(self, subscription_id: int, **kwargs) -> Subscription:
         """Update subscription fields."""
 
-        self.logger.debug("Updating subscription id=%s with %s", subscription_id, kwargs)
+        self.logger.debug(
+            "Updating subscription id=%s with %s", subscription_id, kwargs
+        )
         try:
             subscription = self.session.get(Subscription, subscription_id)
             if not subscription:
@@ -102,11 +112,15 @@ class SubscriptionRepository(BaseRepository):
         except Exception as exc:
             self._handle_exception("delete subscription", exc)
 
-    def is_subscribed(self, user_id: int, subscription_type: Union[str, SubscriptionType]) -> bool:
+    def is_subscribed(
+        self, user_id: int, subscription_type: Union[str, SubscriptionType]
+    ) -> bool:
         """Check if user has an active subscription of the given type."""
 
         sub_type = SubscriptionType(subscription_type)
-        self.logger.debug("Checking subscription user_id=%s type=%s", user_id, sub_type.value)
+        self.logger.debug(
+            "Checking subscription user_id=%s type=%s", user_id, sub_type.value
+        )
         try:
             stmt = select(Subscription).where(
                 Subscription.user_id == user_id,
@@ -116,4 +130,3 @@ class SubscriptionRepository(BaseRepository):
             return self.session.execute(stmt).scalar_one_or_none() is not None
         except Exception as exc:
             self._handle_exception("is subscribed", exc)
-

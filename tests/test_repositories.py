@@ -34,18 +34,26 @@ def test_create_message_stores_correctly(message_repo: MessageRepository, sample
     assert fetched.gateway_count == 3
 
 
-def test_get_last_n_messages_returns_sorted(message_repo: MessageRepository, sample_messages):
+def test_get_last_n_messages_returns_sorted(
+    message_repo: MessageRepository, sample_messages
+):
     last_five = message_repo.get_last_n(5)
     assert len(last_five) == 5
     assert last_five[0].timestamp >= last_five[1].timestamp
 
 
-def test_get_today_messages_filters_by_date(message_repo: MessageRepository, sample_messages, session):
+def test_get_today_messages_filters_by_date(
+    message_repo: MessageRepository, sample_messages, session
+):
     today_messages = message_repo.get_today()
-    assert all(msg.timestamp.date() == datetime.utcnow().date() for msg in today_messages)
+    assert all(
+        msg.timestamp.date() == datetime.utcnow().date() for msg in today_messages
+    )
 
 
-def test_get_by_message_id_returns_or_none(message_repo: MessageRepository, sample_messages):
+def test_get_by_message_id_returns_or_none(
+    message_repo: MessageRepository, sample_messages
+):
     assert message_repo.get_by_message_id("msg-1") is not None
     assert message_repo.get_by_message_id("missing") is None
 
@@ -76,7 +84,9 @@ def test_add_gateway_updates_count(message_repo: MessageRepository, sample_users
     assert refreshed.gateway_count == 2
 
 
-def test_create_message_without_gateway_defaults_count(message_repo: MessageRepository, sample_users):
+def test_create_message_without_gateway_defaults_count(
+    message_repo: MessageRepository, sample_users
+):
     user = sample_users[0]
     timestamp = datetime.utcnow()
     message = message_repo.create(
@@ -93,7 +103,9 @@ def test_create_message_without_gateway_defaults_count(message_repo: MessageRepo
 
 
 # Subscription repository tests ------------------------------------------------
-def test_create_subscription_succeeds(subscription_repo: SubscriptionRepository, sample_users):
+def test_create_subscription_succeeds(
+    subscription_repo: SubscriptionRepository, sample_users
+):
     user = sample_users[0]
     subscription = subscription_repo.create(user.id, SubscriptionType.DAILY_AVG)
     assert subscription.id is not None
@@ -107,13 +119,19 @@ def test_get_active_subscriptions_filters_correctly(
     assert all(sub.is_active for sub in active)
 
 
-def test_is_subscribed_returns_boolean(subscription_repo: SubscriptionRepository, sample_subscriptions):
+def test_is_subscribed_returns_boolean(
+    subscription_repo: SubscriptionRepository, sample_subscriptions
+):
     sample = sample_subscriptions[0]
     assert subscription_repo.is_subscribed(sample.user_id, sample.subscription_type)
-    assert not subscription_repo.is_subscribed(sample.user_id, SubscriptionType.DAILY_HIGH)
+    assert not subscription_repo.is_subscribed(
+        sample.user_id, SubscriptionType.DAILY_HIGH
+    )
 
 
-def test_unsubscribe_deactivates_correctly(subscription_repo: SubscriptionRepository, sample_subscriptions):
+def test_unsubscribe_deactivates_correctly(
+    subscription_repo: SubscriptionRepository, sample_subscriptions
+):
     sub = sample_subscriptions[0]
     subscription_repo.update(sub.id, is_active=False)
     refreshed = subscription_repo.get_by_user_id(sub.user_id)
@@ -140,5 +158,3 @@ def test_update_last_seen_changes_timestamp(user_repo: UserRepository):
     user = user_repo.create(9999, "Tester9999", "mesh9999")
     updated = user_repo.update_last_seen(user.user_id)
     assert updated.last_seen is not None
-
-

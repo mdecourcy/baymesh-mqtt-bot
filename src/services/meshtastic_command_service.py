@@ -21,13 +21,20 @@ from src.repository.command_log_repo import CommandLogRepository
 from src.services.meshtastic_service import MeshtasticService
 from src.services.stats_service import StatsService
 from src.services.subscription_service import SubscriptionService
-from src.services.meshtastic_transport import build_meshtastic_interface, MeshtasticTransportError
+from src.services.meshtastic_transport import (
+    build_meshtastic_interface,
+    MeshtasticTransportError,
+)
 from src.mqtt.client import MQTTClient
 
 
 TEXT_MESSAGE_PORTNUM_VALUE = portnums_pb2.PortNum.Value("TEXT_MESSAGE_APP")
-CHANNEL_ROLE_BY_VALUE = {value: name.upper() for name, value in channel_pb2.Channel.Role.items()}
-PUBLIC_CHANNEL_ROLES = {name for name in CHANNEL_ROLE_BY_VALUE.values() if name in {"PRIMARY", "SECONDARY"}}
+CHANNEL_ROLE_BY_VALUE = {
+    value: name.upper() for name, value in channel_pb2.Channel.Role.items()
+}
+PUBLIC_CHANNEL_ROLES = {
+    name for name in CHANNEL_ROLE_BY_VALUE.values() if name in {"PRIMARY", "SECONDARY"}
+}
 
 
 class MeshtasticCommandService:
@@ -60,11 +67,11 @@ class MeshtasticCommandService:
         self._reconnect_event = threading.Event()
         self._last_error: Optional[str] = None
         self._restart_count: int = 0
-        
+
         # Rate limiting configuration
         self.rate_limit_seconds = config.meshtastic_rate_limit_seconds
         self.rate_limit_burst = config.meshtastic_rate_limit_burst
-        
+
         # Rate limiting: user_id -> list of recent command timestamps
         self._rate_limit_tracker: Dict[int, list] = defaultdict(list)
 
@@ -87,7 +94,9 @@ class MeshtasticCommandService:
             return
 
         self._running = True
-        self._thread = threading.Thread(target=self._run, name="meshtastic-command-thread", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name="meshtastic-command-thread", daemon=True
+        )
         self._thread.start()
         self.logger.info("Meshtastic command listener thread started")
 
@@ -129,7 +138,9 @@ class MeshtasticCommandService:
     def _initialize_listener(self) -> None:
         self._cleanup_interface()
         try:
-            self._interface = build_meshtastic_interface(self.config.meshtastic_connection_url)
+            self._interface = build_meshtastic_interface(
+                self.config.meshtastic_connection_url
+            )
         except MeshtasticTransportError as exc:
             self.logger.error("Failed to initialize Meshtastic interface: %s", exc)
             raise
@@ -148,20 +159,27 @@ class MeshtasticCommandService:
             try:
                 pub.unsubscribe(self._on_receive, "meshtastic.receive")
             except Exception:
-                self.logger.warning("Failed to unsubscribe from meshtastic.receive", exc_info=True)
+                self.logger.warning(
+                    "Failed to unsubscribe from meshtastic.receive", exc_info=True
+                )
             self._receive_registered = False
         if self._disconnect_registered:
             try:
                 pub.unsubscribe(self._on_connection_lost, "meshtastic.connection.lost")
             except Exception:  # pragma: no cover - defensive
-                self.logger.warning("Failed to unsubscribe from meshtastic.connection.lost", exc_info=True)
+                self.logger.warning(
+                    "Failed to unsubscribe from meshtastic.connection.lost",
+                    exc_info=True,
+                )
             self._disconnect_registered = False
         self._subscribed = False
         if self._interface:
             try:
                 self._interface.close()
             except Exception:  # pragma: no cover - defensive
-                self.logger.warning("Failed to close Meshtastic interface", exc_info=True)
+                self.logger.warning(
+                    "Failed to close Meshtastic interface", exc_info=True
+                )
             self._interface = None
 
     def _on_connection_lost(self, *_args, **_kwargs) -> None:
@@ -180,19 +198,25 @@ class MeshtasticCommandService:
         message = reason if exc is None else f"{reason}: {exc}"
         self._last_error = message
         if exc is not None:
-            self.logger.warning("Scheduling Meshtastic reconnect: %s", message, exc_info=True)
+            self.logger.warning(
+                "Scheduling Meshtastic reconnect: %s", message, exc_info=True
+            )
         else:
             self.logger.warning("Scheduling Meshtastic reconnect: %s", message)
         self._cleanup_interface()
         self._reconnect_event.set()
 
-    def _on_receive(self, packet, interface) -> None:  # pragma: no cover - requires hardware
+    def _on_receive(
+        self, packet, interface
+    ) -> None:  # pragma: no cover - requires hardware
         decoded = self._get_value(packet, "decoded") or {}
         text = self._get_value(decoded, "text")
         if not text or not text.startswith(self.COMMAND_PREFIX):
             return
         if not self._is_text_message(decoded):
-            self.logger.debug("Ignoring non-text Meshtastic packet with command prefix: %s", text)
+            self.logger.debug(
+                "Ignoring non-text Meshtastic packet with command prefix: %s", text
+            )
             return
         if not self._is_public_channel(packet):
             self.logger.debug("Ignoring command on non-public channel: %s", text)
@@ -204,7 +228,9 @@ class MeshtasticCommandService:
         if sender_id is None:
             return
 
-        self.logger.info("Received Meshtastic command from %s: %s", sender_id, text.strip())
+        self.logger.info(
+            "Received Meshtastic command from %s: %s", sender_id, text.strip()
+        )
 
         # Check rate limit
         if not self._check_rate_limit(sender_id):
@@ -223,7 +249,11 @@ class MeshtasticCommandService:
                     )
             except Exception:
                 self.logger.warning("Failed to log rate-limited command", exc_info=True)
-            self._send_response(sender_id, "⚠️ Rate limit: Please wait before sending another command.", raw_destination=sender_raw)
+            self._send_response(
+                sender_id,
+                "⚠️ Rate limit: Please wait before sending another command.",
+                raw_destination=sender_raw,
+            )
             return
 
         response = self._process_command(sender_id, text.strip())
@@ -234,14 +264,18 @@ class MeshtasticCommandService:
     def _process_command(self, meshtastic_node_id: int, command: str) -> Optional[str]:
         """Process command from a Meshtastic node ID (not database user.id)."""
         normalized = command.lower().strip()
-        self.logger.info("Processing command from %s: %s", meshtastic_node_id, normalized)
-        
+        self.logger.info(
+            "Processing command from %s: %s", meshtastic_node_id, normalized
+        )
+
         # Convert Meshtastic node ID to database user.id for logging and queries
         db_user = self.subscription_service.user_repo.get_by_user_id(meshtastic_node_id)
         if not db_user:
-            db_user = self.subscription_service.user_repo.create(meshtastic_node_id, f"node-{meshtastic_node_id}", None)
+            db_user = self.subscription_service.user_repo.create(
+                meshtastic_node_id, f"node-{meshtastic_node_id}", None
+            )
         user_id = db_user.id
-        
+
         # Log the command
         try:
             self.command_log_repo.log_command(
@@ -259,7 +293,7 @@ class MeshtasticCommandService:
             return self._help_text()
         if normalized == "!about":
             return self._about_text()
-        
+
         if normalized == "!unsubscribe":
             self.subscription_service.unsubscribe(user_id)
             return "🔕 All subscriptions cancelled."
@@ -267,7 +301,9 @@ class MeshtasticCommandService:
             subs = self.subscription_service.get_user_subscriptions(user_id)
             if not subs:
                 return "No active subscriptions."
-            return "Active subscriptions:\n" + "\n".join(f"- {sub.subscription_type.value}" for sub in subs)
+            return "Active subscriptions:\n" + "\n".join(
+                f"- {sub.subscription_type.value}" for sub in subs
+            )
 
         parts = normalized.split()
         if len(parts) < 2:
@@ -287,7 +323,11 @@ class MeshtasticCommandService:
             data = self.stats_service.get_last_message_stats_for_user(user_id)
             if not data:
                 return "No messages recorded for you yet."
-            ts = data['timestamp'].strftime('%Y-%m-%d %H:%M UTC') if hasattr(data['timestamp'], 'strftime') else str(data['timestamp'])
+            ts = (
+                data["timestamp"].strftime("%Y-%m-%d %H:%M UTC")
+                if hasattr(data["timestamp"], "strftime")
+                else str(data["timestamp"])
+            )
             return f"Last message:\nID {data['message_id']} | Gateways {data['gateway_count']} | {ts}"
 
         if match := re.match(r"!stats last (\d+) messages", command):
@@ -297,8 +337,14 @@ class MeshtasticCommandService:
                 return "No messages recorded for you yet."
             lines = []
             for row in data:
-                ts = row['timestamp'].strftime('%m-%d %H:%M UTC') if hasattr(row['timestamp'], 'strftime') else str(row['timestamp'])
-                lines.append(f"{ts}: {row['gateway_count']} gw (ID {row['message_id']})")
+                ts = (
+                    row["timestamp"].strftime("%m-%d %H:%M UTC")
+                    if hasattr(row["timestamp"], "strftime")
+                    else str(row["timestamp"])
+                )
+                lines.append(
+                    f"{ts}: {row['gateway_count']} gw (ID {row['message_id']})"
+                )
             return "Last messages:\n" + "\n".join(lines)
 
         if command == "!stats today":
@@ -312,7 +358,7 @@ class MeshtasticCommandService:
             lines = []
             for row in breakdown:
                 base = f"{row['hour']:02d}h → {row['message_count']} msgs, avg {row['average_gateways']:.1f}"
-                p50 = row.get('p50_gateways')
+                p50 = row.get("p50_gateways")
                 if p50 is not None:
                     base += f", p50 {p50:.0f}, p90 {row.get('p90_gateways', 0):.0f}"
                 lines.append(base)
@@ -344,13 +390,13 @@ class MeshtasticCommandService:
             f"Min: {stats.get('min_gateways', 0)} | "
             f"Max: {stats.get('max_gateways', 0)}"
         )
-        
+
         # Add percentiles if available
-        p50 = stats.get('p50_gateways')
-        p90 = stats.get('p90_gateways')
-        p95 = stats.get('p95_gateways')
-        p99 = stats.get('p99_gateways')
-        
+        p50 = stats.get("p50_gateways")
+        p90 = stats.get("p90_gateways")
+        p95 = stats.get("p95_gateways")
+        p99 = stats.get("p99_gateways")
+
         if p50 is not None:
             percentiles = (
                 f"\nPercentiles:\n"
@@ -358,7 +404,7 @@ class MeshtasticCommandService:
                 f"p95: {p95:.1f} | p99: {p99:.1f}"
             )
             return base + percentiles
-        
+
         return base
 
     def _help_text(self) -> str:
@@ -384,14 +430,18 @@ class MeshtasticCommandService:
             "Collects MQTT stats and delivers daily summaries."
         )
 
-    def _send_response(self, destination_id: int, message: str, *, raw_destination: Any | None = None) -> None:
+    def _send_response(
+        self, destination_id: int, message: str, *, raw_destination: Any | None = None
+    ) -> None:
         try:
             chunks = self._chunk_message(message)
             for idx, chunk in enumerate(chunks):
                 if self._interface:
                     self.logger.info(
                         "Sending Meshtastic direct response via interface to %s (chunk %s/%s, len=%s)",
-                        raw_destination if raw_destination is not None else destination_id,
+                        raw_destination
+                        if raw_destination is not None
+                        else destination_id,
                         idx + 1,
                         len(chunks),
                         len(chunk),
@@ -399,7 +449,11 @@ class MeshtasticCommandService:
                     # For command replies we always send a direct message back
                     # to the originating node. Using destinationId keeps this
                     # as a DM rather than a channel broadcast.
-                    dest = raw_destination if raw_destination is not None else destination_id
+                    dest = (
+                        raw_destination
+                        if raw_destination is not None
+                        else destination_id
+                    )
                     self._interface.sendText(chunk, destinationId=dest)
                     # Give the radio some breathing room between chunks. Some
                     # firmwares appear to silently drop back-to-back packets,
@@ -441,8 +495,12 @@ class MeshtasticCommandService:
                     )
                     self.meshtastic_service.send_message(channel_id, chunk)
         except Exception as exc:  # pragma: no cover
-            self.logger.warning("Failed to post stats message to channel %s", channel_id, exc_info=True)
-            self._schedule_reconnect(f"Failed to post stats message to channel {channel_id}", exc)
+            self.logger.warning(
+                "Failed to post stats message to channel %s", channel_id, exc_info=True
+            )
+            self._schedule_reconnect(
+                f"Failed to post stats message to channel {channel_id}", exc
+            )
 
     def _coerce_user_id(self, raw) -> Optional[int]:
         try:
@@ -460,46 +518,50 @@ class MeshtasticCommandService:
     def _check_rate_limit(self, user_id: int) -> bool:
         """
         Check if user has exceeded rate limit.
-        
+
         Returns True if command is allowed, False if rate limited.
         """
         current_time = time.time()
-        
+
         # Get user's recent command timestamps
         timestamps = self._rate_limit_tracker[user_id]
-        
+
         # Remove timestamps older than the rate limit window
         cutoff_time = current_time - self.rate_limit_seconds
         timestamps[:] = [ts for ts in timestamps if ts > cutoff_time]
-        
+
         # Check if user has exceeded burst limit
         if len(timestamps) >= self.rate_limit_burst:
             return False
-        
+
         # Add current timestamp
         timestamps.append(current_time)
-        
+
         # Clean up old rate limit trackers periodically
         if len(self._rate_limit_tracker) > 100:
             self._cleanup_rate_limit_tracker()
-        
+
         return True
 
     def _cleanup_rate_limit_tracker(self) -> None:
         """Remove rate limit entries for users who haven't sent commands recently."""
         current_time = time.time()
         cutoff_time = current_time - (self.rate_limit_seconds * 10)  # 10x the window
-        
+
         users_to_remove = [
-            user_id for user_id, timestamps in self._rate_limit_tracker.items()
+            user_id
+            for user_id, timestamps in self._rate_limit_tracker.items()
             if not timestamps or max(timestamps) < cutoff_time
         ]
-        
+
         for user_id in users_to_remove:
             del self._rate_limit_tracker[user_id]
-        
+
         if users_to_remove:
-            self.logger.debug("Cleaned up rate limit tracker for %d inactive users", len(users_to_remove))
+            self.logger.debug(
+                "Cleaned up rate limit tracker for %d inactive users",
+                len(users_to_remove),
+            )
 
     # ------------------------------------------------------------------ #
     # Introspection helpers (used by admin/health endpoints)
@@ -551,7 +613,7 @@ class MeshtasticCommandService:
         to = self._get_value(packet, "to")
         if to is not None and to != 0xFFFFFFFF:  # not broadcast
             return True
-        
+
         # For broadcast messages, check if channel is public
         channel_info = self._get_value(packet, "channel")
         if channel_info is None:
@@ -568,8 +630,12 @@ class MeshtasticCommandService:
             if source is None:
                 return
             if isinstance(source, dict):
-                candidates.extend(source.get(key) for key in ("role", "role_name", "roleName"))
-                candidates.extend(source.get(key) for key in ("public", "is_public", "isPublic"))
+                candidates.extend(
+                    source.get(key) for key in ("role", "role_name", "roleName")
+                )
+                candidates.extend(
+                    source.get(key) for key in ("public", "is_public", "isPublic")
+                )
                 nested = source.get("settings")
                 if nested is not None:
                     _gather(nested)
@@ -666,4 +732,3 @@ class MeshtasticCommandService:
         if current:
             parts.append(" ".join(current))
         return parts or [line[:limit]]
-

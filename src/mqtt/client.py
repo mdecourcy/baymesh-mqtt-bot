@@ -25,7 +25,7 @@ from src.repository.user_repo import UserRepository
 class MQTTClient:
     """
     MQTT client that listens to the Meshtastic broker and persists messages.
-    
+
     Uses a packet queue to collect MQTT replays from multiple gateways over
     a time window, then persists them with accurate gateway counts.
     """
@@ -70,21 +70,31 @@ class MQTTClient:
                 self.config.mqtt_server,
                 self.config.mqtt_username,
             )
-            self._client.username_pw_set(self.config.mqtt_username, self.config.mqtt_password)
+            self._client.username_pw_set(
+                self.config.mqtt_username, self.config.mqtt_password
+            )
             if self.config.mqtt_tls_enabled:
-                cert_reqs = ssl.CERT_NONE if self.config.mqtt_tls_insecure else ssl.CERT_REQUIRED
+                cert_reqs = (
+                    ssl.CERT_NONE
+                    if self.config.mqtt_tls_insecure
+                    else ssl.CERT_REQUIRED
+                )
                 self._client.tls_set(cert_reqs=cert_reqs)
                 self._client.tls_insecure_set(self.config.mqtt_tls_insecure)
                 port = 8883
             else:
                 port = 1883
-            result = self._client.connect(self.config.mqtt_server, port=port, keepalive=60)
+            result = self._client.connect(
+                self.config.mqtt_server, port=port, keepalive=60
+            )
             if result != mqtt.MQTT_ERR_SUCCESS:
                 self.logger.error("MQTT connect failed with code %s", result)
                 return False
             return True
         except Exception as exc:
-            self.logger.error("Failed to connect to MQTT broker: %s", exc, exc_info=True)
+            self.logger.error(
+                "Failed to connect to MQTT broker: %s", exc, exc_info=True
+            )
             raise MQTTConnectionError("Could not connect to MQTT broker") from exc
 
     def disconnect(self) -> None:
@@ -114,9 +124,9 @@ class MQTTClient:
         """Return uptime as a formatted string."""
         if not self._connected_at:
             return "—"
-        
+
         uptime_seconds = (datetime.utcnow() - self._connected_at).total_seconds()
-        
+
         if uptime_seconds < 60:
             return f"{int(uptime_seconds)}s"
         elif uptime_seconds < 3600:
@@ -134,19 +144,23 @@ class MQTTClient:
     def start(self) -> None:
         """
         Connect and enter the blocking MQTT loop.
-        
+
         Also starts a background thread to process the packet queue.
         """
 
         if not self.connect():
-            raise MQTTConnectionError("Unable to start MQTT loop due to connection failure")
-        
+            raise MQTTConnectionError(
+                "Unable to start MQTT loop due to connection failure"
+            )
+
         # Start packet processing thread
         self._running = True
-        self._processing_thread = threading.Thread(target=self._process_queue, daemon=True)
+        self._processing_thread = threading.Thread(
+            target=self._process_queue, daemon=True
+        )
         self._processing_thread.start()
         self.logger.info("Packet processing thread started")
-        
+
         self.logger.info("Starting MQTT loop")
         try:
             self._client.loop_forever(retry_first_connection=True)
@@ -190,7 +204,12 @@ class MQTTClient:
     # ------------------------------------------------------------------ #
     def _build_client(self) -> mqtt.Client:
         client_id = f"meshtastic-stats-{uuid4().hex[:8]}"
-        client = mqtt.Client(client_id=client_id, clean_session=True, userdata=self, protocol=mqtt.MQTTv311)
+        client = mqtt.Client(
+            client_id=client_id,
+            clean_session=True,
+            userdata=self,
+            protocol=mqtt.MQTTv311,
+        )
         client.enable_logger()
         client.on_connect = self._on_connect
         client.on_disconnect = self._on_disconnect
@@ -221,7 +240,9 @@ class MQTTClient:
         if rc == mqtt.MQTT_ERR_SUCCESS:
             self.logger.info("Disconnected from MQTT broker")
         else:
-            self.logger.warning("Unexpected MQTT disconnect (rc=%s). Attempting reconnect.", rc)
+            self.logger.warning(
+                "Unexpected MQTT disconnect (rc=%s). Attempting reconnect.", rc
+            )
             self._reconnect_count += 1
             try:
                 client.reconnect()
@@ -231,11 +252,13 @@ class MQTTClient:
     def _on_message(self, client, userdata, msg):  # type: ignore[override]
         """
         MQTT message callback - processes messages based on type.
-        
+
         - TEXT_MESSAGE_APP: Queued for batch processing with gateway counting
         - NODEINFO_APP: Processed immediately to update user names
         """
-        parsed = self._parser.parse_message(msg.payload, topic=getattr(msg, "topic", None))
+        parsed = self._parser.parse_message(
+            msg.payload, topic=getattr(msg, "topic", None)
+        )
         if not parsed:
             return
 
@@ -243,14 +266,14 @@ class MQTTClient:
         if sender_id is None:
             self.logger.debug("Message missing sender_id, skipping")
             return
-        
+
         portnum = parsed.get("portnum")
-        
+
         # Handle NODEINFO packets immediately to update user names
         if portnum == "NODEINFO_APP":
             self._process_nodeinfo(parsed)
             return
-        
+
         # Only queue text messages for batch processing
         if portnum != "TEXT_MESSAGE_APP":
             return
@@ -263,36 +286,44 @@ class MQTTClient:
                 # Add it directly to the existing database record
                 self._handle_late_gateway(parsed)
             else:
-                self.logger.debug("Queued packet %s from %s (gateway %s)", 
-                                parsed.get("message_id"), sender_id, parsed.get("gateway_id"))
+                self.logger.debug(
+                    "Queued packet %s from %s (gateway %s)",
+                    parsed.get("message_id"),
+                    sender_id,
+                    parsed.get("gateway_id"),
+                )
 
     def _handle_late_gateway(self, parsed: dict) -> None:
         """
         Handle a gateway relay that arrived after the message was already persisted.
-        
+
         This happens when a gateway forwards a message more than 10 seconds after
         the first gateway relay. We add it directly to the existing message record.
         """
         try:
             message_id = str(parsed.get("message_id"))
             gateway_id = parsed.get("gateway_id")
-            
+
             if not message_id or not gateway_id:
                 return
-            
+
             # Find the existing message
             message = self._message_repo.get_by_message_id(message_id)
             if not message:
-                self.logger.warning("Late gateway %s for unknown message %s", gateway_id, message_id)
+                self.logger.warning(
+                    "Late gateway %s for unknown message %s", gateway_id, message_id
+                )
                 return
-            
+
             # Add the gateway
             self._message_repo.add_gateway(message, gateway_id)
             self.logger.info(
                 "Added late gateway %s to message %s (now %d gateways)",
-                gateway_id, message_id, message.gateway_count
+                gateway_id,
+                message_id,
+                message.gateway_count,
             )
-            
+
         except Exception:
             self.logger.error("Failed to handle late gateway", exc_info=True)
 
@@ -314,19 +345,40 @@ class MQTTClient:
             # Get or create user
             user = self._user_repo.get_by_user_id(sender_id)
             if not user:
-                user = self._user_repo.create(sender_id, sender_name or f"node-{sender_id}", None, role)
-                self.logger.info("Created new user from NODEINFO: %s (%s) role=%s", sender_name, sender_id, role)
+                user = self._user_repo.create(
+                    sender_id, sender_name or f"node-{sender_id}", None, role
+                )
+                self.logger.info(
+                    "Created new user from NODEINFO: %s (%s) role=%s",
+                    sender_name,
+                    sender_id,
+                    role,
+                )
             else:
                 # Update username if we got a real name (not a fallback)
-                if sender_name and sender_name != user.username and not sender_name.startswith("node-"):
+                if (
+                    sender_name
+                    and sender_name != user.username
+                    and not sender_name.startswith("node-")
+                ):
                     old_name = user.username
                     user = self._user_repo.update_username(sender_id, sender_name)
-                    self.logger.info("Updated user name: %s → %s (%s)", old_name, sender_name, sender_id)
+                    self.logger.info(
+                        "Updated user name: %s → %s (%s)",
+                        old_name,
+                        sender_name,
+                        sender_id,
+                    )
 
                 # Update role if it changed
                 if role is not None and role != user.role:
                     user = self._user_repo.update_role(sender_id, role)
-                    self.logger.info("Updated user role: %s (%s) role=%s", sender_name, sender_id, role)
+                    self.logger.info(
+                        "Updated user role: %s (%s) role=%s",
+                        sender_name,
+                        sender_id,
+                        role,
+                    )
 
         except Exception:
             self.logger.error("Failed to process NODEINFO packet", exc_info=True)
@@ -334,62 +386,64 @@ class MQTTClient:
     def _process_queue(self) -> None:
         """
         Background thread that processes packet groups from the queue.
-        
+
         Runs every 5 seconds and persists groups older than the grouping duration.
         """
         self.logger.info("Packet queue processor started")
-        
+
         while self._running:
             try:
                 cutoff = time.time() - self._packet_queue.grouping_duration
                 ready_groups = self._packet_queue.pop_groups_older_than(cutoff)
-                
+
                 for group in ready_groups:
                     self._persist_packet_group(group)
-                
+
                 # Cleanup old hashes every 5 minutes
                 if int(time.time()) % 300 == 0:
                     self._packet_queue.cleanup_old_hashes()
-                    
+
             except Exception:
                 self.logger.error("Error processing packet queue", exc_info=True)
-            
+
             time.sleep(5)
-        
+
         self.logger.info("Packet queue processor stopped")
-    
+
     def _persist_packet_group(self, group) -> None:
         """
         Persist a packet group to the database with all its gateways.
-        
+
         Args:
             group: PacketGroup containing multiple ServiceEnvelopes
         """
         if not group.envelopes:
             return
-        
+
         # Use first envelope for packet metadata
         first_env = group.envelopes[0]
         sender_id = first_env.get("from_id")
         sender_name = first_env.get("sender_name")
-        
+
         if sender_id is None:
             return
-        
+
         # Get or create user
         user = self._user_repo.get_by_user_id(int(sender_id))
         if not user:
-            user = self._user_repo.create(int(sender_id), sender_name or f"node-{sender_id}", None)
-        
+            user = self._user_repo.create(
+                int(sender_id), sender_name or f"node-{sender_id}", None
+            )
+
         # Parse timestamp
         timestamp = first_env.get("timestamp")
         if isinstance(timestamp, datetime):
             timestamp_dt = timestamp.astimezone(timezone.utc).replace(tzinfo=None)
         else:
             timestamp_dt = datetime.utcnow()
-        
+
         message_id = first_env.get("message_id") or f"mqtt-{uuid4().hex}"
-        
+
         try:
             # Create message without gateway initially
             message = self._message_repo.create(
@@ -403,7 +457,7 @@ class MQTTClient:
                 payload=first_env.get("payload_content"),
                 gateway_id=None,  # Don't add gateway on create
             )
-            
+
             # Add all unique gateways from the group
             unique_gateways = group.unique_gateway_ids()
             for gateway_id in unique_gateways:
@@ -412,15 +466,15 @@ class MQTTClient:
                 except Exception:
                     # Gateway already exists, continue
                     pass
-            
+
             self._message_count_today += 1
             self._last_message_time = datetime.utcnow()
             self.logger.info(
-                "Persisted packet %s from %s with %d gateways", 
-                message_id, sender_id, group.gateway_count()
+                "Persisted packet %s from %s with %d gateways",
+                message_id,
+                sender_id,
+                group.gateway_count(),
             )
-            
+
         except Exception:
             self.logger.error("Failed to persist packet group", exc_info=True)
-
-

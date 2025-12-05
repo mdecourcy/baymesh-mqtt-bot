@@ -52,18 +52,19 @@ class CommandLogRepository:
     def get_command_stats(self, days: int = 30) -> Dict[str, Any]:
         """Get aggregate command statistics for the last N days."""
         cutoff = datetime.utcnow() - timedelta(days=days)
-        
+
         # Total commands
-        total_stmt = select(func.count(CommandLog.id)).where(CommandLog.timestamp >= cutoff)
+        total_stmt = select(func.count(CommandLog.id)).where(
+            CommandLog.timestamp >= cutoff
+        )
         total_commands = self.session.execute(total_stmt).scalar() or 0
-        
+
         # Unique users
-        unique_users_stmt = (
-            select(func.count(func.distinct(CommandLog.user_id)))
-            .where(CommandLog.timestamp >= cutoff)
+        unique_users_stmt = select(func.count(func.distinct(CommandLog.user_id))).where(
+            CommandLog.timestamp >= cutoff
         )
         unique_users = self.session.execute(unique_users_stmt).scalar() or 0
-        
+
         # Rate limited count
         rate_limited_stmt = (
             select(func.count(CommandLog.id))
@@ -71,7 +72,7 @@ class CommandLogRepository:
             .where(CommandLog.rate_limited == True)
         )
         rate_limited_count = self.session.execute(rate_limited_stmt).scalar() or 0
-        
+
         # Top commands
         top_commands_stmt = (
             select(CommandLog.command, func.count(CommandLog.id).label("count"))
@@ -84,13 +85,13 @@ class CommandLogRepository:
             {"command": row.command, "count": row.count}
             for row in self.session.execute(top_commands_stmt).all()
         ]
-        
+
         # Top users
         top_users_stmt = (
             select(
                 CommandLog.user_id,
                 CommandLog.username,
-                func.count(CommandLog.id).label("count")
+                func.count(CommandLog.id).label("count"),
             )
             .where(CommandLog.timestamp >= cutoff)
             .group_by(CommandLog.user_id, CommandLog.username)
@@ -101,12 +102,12 @@ class CommandLogRepository:
             {"user_id": row.user_id, "username": row.username, "count": row.count}
             for row in self.session.execute(top_users_stmt).all()
         ]
-        
+
         # Commands per day
         daily_stmt = (
             select(
                 func.date(CommandLog.timestamp).label("date"),
-                func.count(CommandLog.id).label("count")
+                func.count(CommandLog.id).label("count"),
             )
             .where(CommandLog.timestamp >= cutoff)
             .group_by(func.date(CommandLog.timestamp))
@@ -116,19 +117,23 @@ class CommandLogRepository:
             {"date": str(row.date), "count": row.count}
             for row in self.session.execute(daily_stmt).all()
         ]
-        
+
         return {
             "total_commands": total_commands,
             "unique_users": unique_users,
             "rate_limited_count": rate_limited_count,
-            "rate_limited_percentage": (rate_limited_count / total_commands * 100) if total_commands > 0 else 0,
+            "rate_limited_percentage": (rate_limited_count / total_commands * 100)
+            if total_commands > 0
+            else 0,
             "top_commands": top_commands,
             "top_users": top_users,
             "daily_commands": daily_commands,
             "period_days": days,
         }
 
-    def get_user_command_history(self, user_id: int, limit: int = 50) -> List[CommandLog]:
+    def get_user_command_history(
+        self, user_id: int, limit: int = 50
+    ) -> List[CommandLog]:
         """Get command history for a specific user."""
         stmt = (
             select(CommandLog)
@@ -137,5 +142,3 @@ class CommandLogRepository:
             .limit(limit)
         )
         return list(self.session.execute(stmt).scalars().all())
-
-

@@ -198,4 +198,3 @@ def client(session: Session):
     test_client = TestClient(app, raise_server_exceptions=False)
     yield test_client
     app.dependency_overrides.clear()
-

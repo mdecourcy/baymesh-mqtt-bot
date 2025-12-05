@@ -65,23 +65,31 @@ class SchedulerManager:
             job_defaults={"misfire_grace_time": 300, "max_instances": 1},
             executors={"default": {"type": "threadpool", "max_workers": 2}},
         )
-        
+
         # Daily subscription reports
         trigger = CronTrigger(hour=self._send_hour, minute=self._send_minute)
         self._scheduler.add_job(self.send_daily_reports, trigger, name="daily_reports")
         self.logger.info(
-            "Scheduler started; daily reports job set for %02d:%02d UTC", self._send_hour, self._send_minute
+            "Scheduler started; daily reports job set for %02d:%02d UTC",
+            self._send_hour,
+            self._send_minute,
         )
-        
+
         # Daily broadcast to channel
         if self._broadcast_enabled:
-            broadcast_trigger = CronTrigger(hour=self._broadcast_hour, minute=self._broadcast_minute)
-            self._scheduler.add_job(self.send_daily_broadcast, broadcast_trigger, name="daily_broadcast")
-            self.logger.info(
-                "Daily broadcast job set for %02d:%02d UTC to channel %d", 
-                self._broadcast_hour, self._broadcast_minute, self._broadcast_channel
+            broadcast_trigger = CronTrigger(
+                hour=self._broadcast_hour, minute=self._broadcast_minute
             )
-        
+            self._scheduler.add_job(
+                self.send_daily_broadcast, broadcast_trigger, name="daily_broadcast"
+            )
+            self.logger.info(
+                "Daily broadcast job set for %02d:%02d UTC to channel %d",
+                self._broadcast_hour,
+                self._broadcast_minute,
+                self._broadcast_channel,
+            )
+
         # Daily log cleanup at 3 AM UTC
         cleanup_trigger = CronTrigger(hour=3, minute=0)
         self._scheduler.add_job(self.cleanup_logs, cleanup_trigger, name="log_cleanup")
@@ -91,15 +99,15 @@ class SchedulerManager:
         if self._inactivity_alerts_enabled:
             self._scheduler.add_job(
                 self.check_router_inactivity,
-                'interval',
+                "interval",
                 minutes=self._inactivity_check_interval_minutes,
-                name="router_inactivity_check"
+                name="router_inactivity_check",
             )
             self.logger.info(
                 "Router inactivity checks enabled: every %d minutes, threshold %d minutes, alert channel %d",
                 self._inactivity_check_interval_minutes,
                 self._inactivity_threshold_minutes,
-                self._inactivity_alert_channel
+                self._inactivity_alert_channel,
             )
 
         self._scheduler.start()
@@ -125,12 +133,24 @@ class SchedulerManager:
             return
 
         total_sent = 0
-        for sub_type in (SubscriptionType.DAILY_LOW, SubscriptionType.DAILY_AVG, SubscriptionType.DAILY_HIGH):
+        for sub_type in (
+            SubscriptionType.DAILY_LOW,
+            SubscriptionType.DAILY_AVG,
+            SubscriptionType.DAILY_HIGH,
+        ):
             try:
-                subscribers = self._subscription_service.get_subscribers_by_type(sub_type.value)
-                message = self._subscription_service.format_message_for_subscription(sub_type.value, stats)
+                subscribers = self._subscription_service.get_subscribers_by_type(
+                    sub_type.value
+                )
+                message = self._subscription_service.format_message_for_subscription(
+                    sub_type.value, stats
+                )
             except Exception:
-                self.logger.error("Failed to prepare subscription list for %s", sub_type.value, exc_info=True)
+                self.logger.error(
+                    "Failed to prepare subscription list for %s",
+                    sub_type.value,
+                    exc_info=True,
+                )
                 continue
 
             for subscription in subscribers:
@@ -139,7 +159,9 @@ class SchedulerManager:
                     user = subscription.user
                     if not user:
                         continue
-                    success = self._meshtastic_service.send_message(user.user_id, message)
+                    success = self._meshtastic_service.send_message(
+                        user.user_id, message
+                    )
                 except Exception:
                     self.logger.error(
                         "Failed to send %s report to user %s",
@@ -152,7 +174,9 @@ class SchedulerManager:
                         total_sent += 1
                     else:
                         self.logger.warning(
-                            "Meshtastic send returned False for user %s (%s)", subscription.user_id, sub_type.value
+                            "Meshtastic send returned False for user %s (%s)",
+                            subscription.user_id,
+                            sub_type.value,
                         )
 
         try:
@@ -172,7 +196,9 @@ class SchedulerManager:
         try:
             stats = self._stats_service.get_last_24h_stats()
         except Exception:
-            self.logger.error("Failed to compute 24h stats for broadcast", exc_info=True)
+            self.logger.error(
+                "Failed to compute 24h stats for broadcast", exc_info=True
+            )
             return
 
         # Format the broadcast message
@@ -181,36 +207,34 @@ class SchedulerManager:
         # Try sending with retries
         max_retries = 3
         retry_delay = 10  # seconds
-        
+
         for attempt in range(1, max_retries + 1):
             try:
                 self.logger.info(
                     "Attempting to send daily broadcast to channel %d (attempt %d/%d)",
                     self._broadcast_channel,
                     attempt,
-                    max_retries
+                    max_retries,
                 )
-                
+
                 # Send to channel (channel_id is passed directly, not as node ID)
                 # The broadcast_channel value represents the channel index (0-7)
                 success = self._meshtastic_service.send_message_to_channel(
-                    message=message,
-                    channel_id=self._broadcast_channel,
-                    timeout=60
+                    message=message, channel_id=self._broadcast_channel, timeout=60
                 )
 
                 if success:
                     self.logger.info(
                         "Daily broadcast sent successfully to channel %d on attempt %d",
                         self._broadcast_channel,
-                        attempt
+                        attempt,
                     )
                     return  # Success, exit early
                 else:
                     self.logger.warning(
                         "Daily broadcast failed for channel %d on attempt %d",
                         self._broadcast_channel,
-                        attempt
+                        attempt,
                     )
             except Exception as e:
                 self.logger.error(
@@ -218,19 +242,20 @@ class SchedulerManager:
                     self._broadcast_channel,
                     attempt,
                     str(e),
-                    exc_info=True
+                    exc_info=True,
                 )
-            
+
             # Wait before retrying (unless this was the last attempt)
             if attempt < max_retries:
                 self.logger.info("Waiting %d seconds before retry...", retry_delay)
                 import time
+
                 time.sleep(retry_delay)
-        
+
         self.logger.error(
             "Daily broadcast failed after %d attempts to channel %d",
             max_retries,
-            self._broadcast_channel
+            self._broadcast_channel,
         )
 
     def _format_broadcast_message(self, stats: dict) -> str:
@@ -242,7 +267,7 @@ class SchedulerManager:
         p50 = stats.get("p50_gateways")
         p90 = stats.get("p90_gateways")
         p95 = stats.get("p95_gateways")
-        
+
         base = (
             f"📊 Daily Stats\n"
             f"Messages: {msg_count:,}\n"
@@ -250,7 +275,7 @@ class SchedulerManager:
             f"Peak GW: {max_gw}\n"
             f"Min GW: {min_gw}"
         )
-        
+
         # Add percentiles if available
         if p50 is not None:
             base += (
@@ -258,7 +283,7 @@ class SchedulerManager:
                 f"p50: {p50:.0f} | p90: {p90:.0f}\n"
                 f"p95: {p95:.0f}"
             )
-        
+
         base += "\n🌐 meshtastic-stats.local"
         return base
 
@@ -271,7 +296,9 @@ class SchedulerManager:
             deleted = cleanup_old_logs(max_age_days=settings.log_retention_days)
 
             if deleted > 0:
-                self.logger.info(f"Log cleanup complete: deleted {deleted} old log file(s)")
+                self.logger.info(
+                    f"Log cleanup complete: deleted {deleted} old log file(s)"
+                )
             else:
                 self.logger.debug("Log cleanup complete: no old files to delete")
         except Exception:
@@ -301,7 +328,8 @@ class SchedulerManager:
 
                 # Filter out routers we've already alerted on
                 new_inactive = [
-                    (gw_id, last_seen, username) for gw_id, last_seen, username in inactive_routers
+                    (gw_id, last_seen, username)
+                    for gw_id, last_seen, username in inactive_routers
                     if gw_id not in self._alerted_routers
                 ]
 
@@ -331,35 +359,35 @@ class SchedulerManager:
 
                         # Send alert
                         success = self._meshtastic_service.send_message_to_channel(
-                            message=message,
-                            channel_id=self._inactivity_alert_channel
+                            message=message, channel_id=self._inactivity_alert_channel
                         )
 
                         if success:
                             self.logger.info(
                                 "Sent inactivity alert for router %s (%s) - last seen %s ago",
-                                username, gateway_id, time_str
+                                username,
+                                gateway_id,
+                                time_str,
                             )
                             self._alerted_routers.add(gateway_id)
                         else:
                             self.logger.warning(
-                                "Failed to send inactivity alert for router %s", username
+                                "Failed to send inactivity alert for router %s",
+                                username,
                             )
 
                     except Exception:
                         self.logger.error(
                             "Failed to process inactivity alert for %s",
                             gateway_id,
-                            exc_info=True
+                            exc_info=True,
                         )
 
                 # Clear alerted routers that are now active again
-                active_router_ids = {
-                    gw_id for gw_id, _, _ in inactive_routers
-                }
-                self._alerted_routers = self._alerted_routers.intersection(active_router_ids)
+                active_router_ids = {gw_id for gw_id, _, _ in inactive_routers}
+                self._alerted_routers = self._alerted_routers.intersection(
+                    active_router_ids
+                )
 
         except Exception:
             self.logger.error("Failed to check router inactivity", exc_info=True)
-
-

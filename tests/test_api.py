@@ -113,9 +113,8 @@ def test_server_error_returns_500(monkeypatch, client: TestClient):
     def raise_error(*args, **kwargs):
         raise ValueError("boom")
 
-    monkeypatch.setattr("src.services.stats_service.StatsService.get_today_stats", raise_error)
+    monkeypatch.setattr(
+        "src.services.stats_service.StatsService.get_today_stats", raise_error
+    )
     response = client.get("/stats/today")
     assert response.status_code == 500
-
-
-

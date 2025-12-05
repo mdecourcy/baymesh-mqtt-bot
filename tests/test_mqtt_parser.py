@@ -26,11 +26,15 @@ def _build_envelope(text: str, *, encrypted: bool = False):
 
     if encrypted:
         parser = ProtobufMessageParser()
-        nonce = parser._build_nonce(packet.id, getattr(packet, "from"))  # pylint: disable=protected-access
+        nonce = parser._build_nonce(
+            packet.id, getattr(packet, "from")
+        )  # pylint: disable=protected-access
         key = base64.b64decode(ProtobufMessageParser.DEFAULT_DECRYPTION_KEY)
         cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
         encryptor = cipher.encryptor()
-        packet.encrypted = encryptor.update(data.SerializeToString()) + encryptor.finalize()
+        packet.encrypted = (
+            encryptor.update(data.SerializeToString()) + encryptor.finalize()
+        )
     else:
         packet.decoded.CopyFrom(data)
 
@@ -44,7 +48,9 @@ def _build_envelope(text: str, *, encrypted: bool = False):
 def test_parser_handles_plain_service_envelope():
     envelope = _build_envelope("hello mesh", encrypted=False)
     parser = ProtobufMessageParser()
-    parsed = parser.parse_message(envelope.SerializeToString(), topic="msh/US/bayarea/2/e")
+    parsed = parser.parse_message(
+        envelope.SerializeToString(), topic="msh/US/bayarea/2/e"
+    )
     assert parsed is not None
     assert parsed["payload_content"] == "hello mesh"
     assert parsed["channel_id"] == "MediumFast"
@@ -71,7 +77,10 @@ def test_parser_skips_json_topics(caplog):
     with caplog.at_level("WARNING"):
         parsed = parser.parse_message(b'{"foo": 1}', topic="msh/US/bayarea/2/json")
     assert parsed is None
-    assert not any("Failed to parse protobuf payload" in record.message for record in caplog.records)
+    assert not any(
+        "Failed to parse protobuf payload" in record.message
+        for record in caplog.records
+    )
 
 
 def test_parser_respects_ok_to_mqtt_bitfield_zero():
@@ -84,7 +93,9 @@ def test_parser_respects_ok_to_mqtt_bitfield_zero():
     data.bitfield = 0
 
     parser = ProtobufMessageParser()
-    parsed = parser.parse_message(envelope.SerializeToString(), topic="msh/US/bayarea/2/e")
+    parsed = parser.parse_message(
+        envelope.SerializeToString(), topic="msh/US/bayarea/2/e"
+    )
     assert parsed is None
 
 
@@ -97,7 +108,8 @@ def test_parser_allows_messages_when_bitfield_nonzero():
     data.bitfield = 1
 
     parser = ProtobufMessageParser()
-    parsed = parser.parse_message(envelope.SerializeToString(), topic="msh/US/bayarea/2/e")
+    parsed = parser.parse_message(
+        envelope.SerializeToString(), topic="msh/US/bayarea/2/e"
+    )
     assert parsed is not None
     assert parsed["payload_content"] == "hello allowed"
-

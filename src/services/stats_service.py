@@ -19,7 +19,11 @@ from src.repository.stats_cache_repo import StatisticsCacheRepository
 class StatsService:
     """Provide aggregate statistics over message data."""
 
-    def __init__(self, message_repo: MessageRepository, stats_cache_repo: StatisticsCacheRepository) -> None:
+    def __init__(
+        self,
+        message_repo: MessageRepository,
+        stats_cache_repo: StatisticsCacheRepository,
+    ) -> None:
         self.message_repo = message_repo
         self.stats_cache_repo = stats_cache_repo
         self.logger = get_logger(self.__class__.__name__)
@@ -180,9 +184,15 @@ class StatsService:
         try:
             start, end = self._day_bounds(target_date)
             now = datetime.now(timezone.utc)
-            for metric in (MetricType.DAILY_LOW, MetricType.DAILY_AVG, MetricType.DAILY_HIGH):
+            for metric in (
+                MetricType.DAILY_LOW,
+                MetricType.DAILY_AVG,
+                MetricType.DAILY_HIGH,
+            ):
                 value = self.calculate_aggregation(metric.value, start, end)
-                self.stats_cache_repo.upsert_entry(metric, target_date, value, now, metric_hour=None)
+                self.stats_cache_repo.upsert_entry(
+                    metric, target_date, value, now, metric_hour=None
+                )
             self.logger.info("Cached daily statistics for %s", target_date)
         except Exception as exc:
             self._raise_stats_error("cache daily stats", exc)
@@ -195,13 +205,13 @@ class StatsService:
         yesterday = today - timedelta(days=1)
         last_week = today - timedelta(days=7)
         last_month = today - timedelta(days=30)
-        
+
         try:
             today_stats = self.get_date_stats(today)
             yesterday_stats = self.get_date_stats(yesterday)
             last_week_stats = self.get_date_stats(last_week)
             last_month_stats = self.get_date_stats(last_month)
-            
+
             return {
                 "today": today_stats,
                 "yesterday": yesterday_stats,
@@ -210,19 +220,19 @@ class StatsService:
                 "comparisons": {
                     "day_over_day": self._calculate_percentage_change(
                         today_stats.get("message_count", 0),
-                        yesterday_stats.get("message_count", 0)
+                        yesterday_stats.get("message_count", 0),
                     ),
                     "week_over_week": self._calculate_percentage_change(
                         today_stats.get("message_count", 0),
-                        last_week_stats.get("message_count", 0)
+                        last_week_stats.get("message_count", 0),
                     ),
                     "month_over_month": self._calculate_percentage_change(
                         today_stats.get("message_count", 0),
-                        last_month_stats.get("message_count", 0)
+                        last_month_stats.get("message_count", 0),
                     ),
                     "gateway_day_over_day": self._calculate_percentage_change(
                         today_stats.get("average_gateways", 0),
-                        yesterday_stats.get("average_gateways", 0)
+                        yesterday_stats.get("average_gateways", 0),
                     ),
                 },
             }
@@ -259,26 +269,36 @@ class StatsService:
         count = result.message_count or 0
 
         stats = {
-            "average_gateways": float(result.avg_gateways) if result.avg_gateways is not None else 0.0,
-            "max_gateways": int(result.max_gateways) if result.max_gateways is not None else 0,
-            "min_gateways": int(result.min_gateways) if result.min_gateways is not None else 0,
+            "average_gateways": float(result.avg_gateways)
+            if result.avg_gateways is not None
+            else 0.0,
+            "max_gateways": int(result.max_gateways)
+            if result.max_gateways is not None
+            else 0,
+            "min_gateways": int(result.min_gateways)
+            if result.min_gateways is not None
+            else 0,
             "message_count": int(count),
-            "start_timestamp": self._as_aware(result.first_ts) if result.first_ts else None,
+            "start_timestamp": self._as_aware(result.first_ts)
+            if result.first_ts
+            else None,
             "end_timestamp": self._as_aware(result.last_ts) if result.last_ts else None,
         }
-        
+
         # Calculate percentiles if there are messages
         if count > 0:
             percentiles = self._calculate_percentiles(start, end)
             stats.update(percentiles)
         else:
-            stats.update({
-                "p50_gateways": None,
-                "p90_gateways": None,
-                "p95_gateways": None,
-                "p99_gateways": None,
-            })
-        
+            stats.update(
+                {
+                    "p50_gateways": None,
+                    "p90_gateways": None,
+                    "p95_gateways": None,
+                    "p99_gateways": None,
+                }
+            )
+
         self.logger.debug("Aggregated stats between %s and %s: %s", start, end, stats)
         return stats
 
@@ -322,41 +342,55 @@ class StatsService:
         )
         results = session.execute(stmt).all()
         breakdown: List[Dict[str, Any]] = []
-        
+
         for row in results:
             hour_stats = {
                 "hour": int(row.hour),
-                "average_gateways": float(row.avg_gateways) if row.avg_gateways is not None else 0.0,
-                "max_gateways": int(row.max_gateways) if row.max_gateways is not None else 0,
-                "min_gateways": int(row.min_gateways) if row.min_gateways is not None else 0,
+                "average_gateways": float(row.avg_gateways)
+                if row.avg_gateways is not None
+                else 0.0,
+                "max_gateways": int(row.max_gateways)
+                if row.max_gateways is not None
+                else 0,
+                "min_gateways": int(row.min_gateways)
+                if row.min_gateways is not None
+                else 0,
                 "message_count": int(row.message_count),
             }
-            
+
             # Calculate percentiles for this hour
             if row.message_count > 0:
-                hour_start = start.replace(hour=int(row.hour), minute=0, second=0, microsecond=0)
+                hour_start = start.replace(
+                    hour=int(row.hour), minute=0, second=0, microsecond=0
+                )
                 hour_end = hour_start + timedelta(hours=1)
                 percentiles = self._calculate_percentiles(hour_start, hour_end)
                 hour_stats.update(percentiles)
             else:
-                hour_stats.update({
-                    "p50_gateways": None,
-                    "p90_gateways": None,
-                    "p95_gateways": None,
-                    "p99_gateways": None,
-                })
-            
+                hour_stats.update(
+                    {
+                        "p50_gateways": None,
+                        "p90_gateways": None,
+                        "p95_gateways": None,
+                        "p99_gateways": None,
+                    }
+                )
+
             breakdown.append(hour_stats)
-        
-        self.logger.debug("Hourly breakdown between %s and %s: %s entries", start, end, len(breakdown))
+
+        self.logger.debug(
+            "Hourly breakdown between %s and %s: %s entries", start, end, len(breakdown)
+        )
         return breakdown
 
     def _day_bounds(self, target_date: date_type) -> Tuple[datetime, datetime]:
         start = datetime.combine(target_date, time.min, tzinfo=timezone.utc)
         end = start + timedelta(days=1)
         return start, end
-    
-    def _calculate_percentiles(self, start: datetime, end: datetime) -> Dict[str, Optional[float]]:
+
+    def _calculate_percentiles(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Optional[float]]:
         """
         Calculate p50, p90, p95, p99 for gateway counts in the given time range.
         Uses a simple approach: fetch all gateway_count values and calculate percentiles in Python.
@@ -369,7 +403,7 @@ class StatsService:
             .order_by(Message.gateway_count)
         )
         results = self._session.execute(stmt).scalars().all()
-        
+
         if not results:
             return {
                 "p50_gateways": None,
@@ -377,10 +411,10 @@ class StatsService:
                 "p95_gateways": None,
                 "p99_gateways": None,
             }
-        
+
         sorted_values = sorted(results)
         n = len(sorted_values)
-        
+
         def percentile(p: float) -> float:
             """Calculate the p-th percentile (0-100)."""
             if n == 1:
@@ -389,8 +423,10 @@ class StatsService:
             lower = int(index)
             upper = min(lower + 1, n - 1)
             weight = index - lower
-            return float(sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight)
-        
+            return float(
+                sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
+            )
+
         return {
             "p50_gateways": percentile(50),
             "p90_gateways": percentile(90),
@@ -431,7 +467,11 @@ class StatsService:
     def _as_aware(self, dt: Optional[datetime]) -> Optional[datetime]:
         if dt is None:
             return None
-        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+        return (
+            dt.replace(tzinfo=timezone.utc)
+            if dt.tzinfo is None
+            else dt.astimezone(timezone.utc)
+        )
 
     def _to_naive(self, dt: datetime) -> datetime:
         aware = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
@@ -440,4 +480,3 @@ class StatsService:
     def _raise_stats_error(self, action: str, exc: Exception) -> None:
         self.logger.exception("Failed to %s", action)
         raise StatisticsError(f"Failed to {action}") from exc
-

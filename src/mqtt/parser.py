@@ -52,20 +52,26 @@ class ProtobufMessageParser:
         self._keyring: list[bytes] = []
 
         if include_default_key:
-            default_key = self.settings.meshtastic_default_key or self.DEFAULT_DECRYPTION_KEY
+            default_key = (
+                self.settings.meshtastic_default_key or self.DEFAULT_DECRYPTION_KEY
+            )
             self._append_key(default_key)
         if decryption_keys:
             for key in decryption_keys:
                 self._append_key(key)
         if self._keyring:
-            self.logger.info("Meshtastic parser loaded %s decryption key(s)", len(self._keyring))
+            self.logger.info(
+                "Meshtastic parser loaded %s decryption key(s)", len(self._keyring)
+            )
 
     # ------------------------------------------------------------------ #
     # Public API
     # ------------------------------------------------------------------ #
     SKIP_TOPIC_PATTERNS = ("/json", "/telemetry", "/stat/")
 
-    def parse_message(self, payload: bytes, topic: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def parse_message(
+        self, payload: bytes, topic: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Parse the binary protobuf payload into a dict.
 
@@ -99,7 +105,9 @@ class ProtobufMessageParser:
         count = len(metadata)
         return count if count > 0 else 1
 
-    def extract_sender_info(self, message: Dict[str, Any], portnum_name: Optional[str] = None) -> Tuple[int, str, Optional[int]]:
+    def extract_sender_info(
+        self, message: Dict[str, Any], portnum_name: Optional[str] = None
+    ) -> Tuple[int, str, Optional[int]]:
         """
         Extract sender numeric ID, human readable name, and device role.
         For NODEINFO packets, extract name and role from the User protobuf payload.
@@ -120,14 +128,18 @@ class ProtobufMessageParser:
                 try:
                     user = self.mesh_pb2.User()
                     user.ParseFromString(payload_bytes)
-                    sender_name = getattr(user, "long_name", None) or getattr(user, "short_name", None)
+                    sender_name = getattr(user, "long_name", None) or getattr(
+                        user, "short_name", None
+                    )
                     user_role = getattr(user, "role", None)
                 except Exception:
                     pass
 
         # Fallback: check decoded attributes
         if not sender_name and decoded is not None:
-            sender_name = getattr(decoded, "short_name", None) or getattr(decoded, "long_name", None)
+            sender_name = getattr(decoded, "short_name", None) or getattr(
+                decoded, "long_name", None
+            )
 
         if not sender_name:
             metadata = message.get("rx_metadata") or []
@@ -157,7 +169,9 @@ class ProtobufMessageParser:
             self.logger.warning("Ignoring invalid base64 decryption key")
             return
         if len(decoded) != 16:
-            self.logger.warning("Ignoring decryption key with invalid length (%s bytes)", len(decoded))
+            self.logger.warning(
+                "Ignoring decryption key with invalid length (%s bytes)", len(decoded)
+            )
             return
         if decoded not in self._keyring:
             self._keyring.append(decoded)
@@ -174,7 +188,9 @@ class ProtobufMessageParser:
             return None
         return envelope
 
-    def _from_envelope(self, envelope, topic: Optional[str]) -> Optional[Dict[str, Any]]:
+    def _from_envelope(
+        self, envelope, topic: Optional[str]
+    ) -> Optional[Dict[str, Any]]:
         packet = envelope.packet
         if not packet:
             return None
@@ -209,7 +225,9 @@ class ProtobufMessageParser:
 
         rx_time = getattr(packet, "rx_time", None)
         timestamp = (
-            datetime.fromtimestamp(rx_time, tz=timezone.utc) if rx_time else datetime.now(tz=timezone.utc)
+            datetime.fromtimestamp(rx_time, tz=timezone.utc)
+            if rx_time
+            else datetime.now(tz=timezone.utc)
         )
 
         sender_id, sender_name, role = self.extract_sender_info(
@@ -218,7 +236,7 @@ class ProtobufMessageParser:
                 "decoded": decoded,
                 "rx_metadata": [],
             },
-            portnum_name
+            portnum_name,
         )
 
         parsed: Dict[str, Any] = {
@@ -246,7 +264,9 @@ class ProtobufMessageParser:
         try:
             message.ParseFromString(payload)
         except Exception as exc:  # pragma: no cover - defensive
-            self.logger.warning("Failed to parse protobuf payload: %s", exc, exc_info=True)
+            self.logger.warning(
+                "Failed to parse protobuf payload: %s", exc, exc_info=True
+            )
             return None
 
         rx_time = getattr(message, "rx_time", None) or getattr(message, "rxTime", None)
@@ -279,7 +299,7 @@ class ProtobufMessageParser:
                 "decoded": decoded,
                 "rx_metadata": metadata,
             },
-            portnum_name
+            portnum_name,
         )
 
         first_metadata = metadata[0] if metadata else None
@@ -331,7 +351,9 @@ class ProtobufMessageParser:
 
     def _build_nonce(self, packet_id: int, from_node: int) -> bytes:
         packet_bytes = packet_id.to_bytes(8, byteorder="little", signed=False)
-        from_bytes = (from_node & 0xFFFFFFFF).to_bytes(4, byteorder="little", signed=False)
+        from_bytes = (from_node & 0xFFFFFFFF).to_bytes(
+            4, byteorder="little", signed=False
+        )
         counter_bytes = (0).to_bytes(4, byteorder="little", signed=False)
         return packet_bytes + from_bytes + counter_bytes
 
@@ -357,13 +379,14 @@ class ProtobufMessageParser:
         """Extract portnum as a string name (e.g. 'TEXT_MESSAGE_APP', 'NODEINFO_APP')."""
         if decoded is None:
             return None
-        
+
         portnum_value = getattr(decoded, "portnum", None)
         if portnum_value is None:
             return None
-        
+
         try:
             from meshtastic.mesh_pb2 import meshtastic_dot_portnums__pb2 as portnums_pb2
+
             return portnums_pb2.PortNum.Name(portnum_value)
         except Exception:
             return str(portnum_value)
@@ -386,14 +409,16 @@ class ProtobufMessageParser:
                     return 0
         return 0
 
-    def _extract_payload(self, decoded, portnum_name: Optional[str] = None) -> Optional[str]:
+    def _extract_payload(
+        self, decoded, portnum_name: Optional[str] = None
+    ) -> Optional[str]:
         if decoded is None:
             return None
 
         text_value = getattr(decoded, "text", None)
         if text_value:
             return text_value
-        
+
         # For NODEINFO packets, extract user info
         if portnum_name == "NODEINFO_APP":
             payload_bytes = getattr(decoded, "payload", None)
@@ -402,7 +427,9 @@ class ProtobufMessageParser:
                     user = self.mesh_pb2.User()
                     user.ParseFromString(payload_bytes)
                     # Return the long_name if available
-                    return getattr(user, "long_name", None) or getattr(user, "short_name", None)
+                    return getattr(user, "long_name", None) or getattr(
+                        user, "short_name", None
+                    )
                 except Exception:
                     pass
 
@@ -417,4 +444,3 @@ class ProtobufMessageParser:
             return json.dumps(decoded.__dict__)
         except Exception:
             return None
-

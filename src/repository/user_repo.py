@@ -20,7 +20,13 @@ class UserRepository(BaseRepository):
     def __init__(self, session: Session):
         super().__init__(session)
 
-    def create(self, user_id: int, username: str, mesh_id: Optional[str], role: Optional[int] = None) -> User:
+    def create(
+        self,
+        user_id: int,
+        username: str,
+        mesh_id: Optional[str],
+        role: Optional[int] = None,
+    ) -> User:
         """Create a new user record."""
 
         self.logger.debug("Creating user user_id=%s", user_id)
@@ -51,7 +57,9 @@ class UserRepository(BaseRepository):
         except Exception as exc:
             self._handle_exception("get user by user_id", exc)
 
-    def get_or_create(self, user_id: int, username: str, mesh_id: Optional[str]) -> User:
+    def get_or_create(
+        self, user_id: int, username: str, mesh_id: Optional[str]
+    ) -> User:
         """Return existing user or create new."""
 
         self.logger.debug("Getting or creating user_id=%s", user_id)
@@ -90,7 +98,9 @@ class UserRepository(BaseRepository):
     def update_username(self, user_id: int, new_username: str) -> User:
         """Update the username for a user."""
 
-        self.logger.debug("Updating username for user_id=%s to %s", user_id, new_username)
+        self.logger.debug(
+            "Updating username for user_id=%s to %s", user_id, new_username
+        )
         try:
             user = self.get_by_user_id(user_id)
             if not user:
@@ -122,4 +132,3 @@ class UserRepository(BaseRepository):
             raise
         except Exception as exc:
             self._handle_exception("update role", exc)
-

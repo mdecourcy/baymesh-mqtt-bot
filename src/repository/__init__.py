@@ -29,6 +29,3 @@ class BaseRepository:
             self.session.flush()
         except Exception as exc:  # pragma: no cover - defensive
             self._handle_exception("flush", exc)
-
-
-

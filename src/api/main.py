@@ -62,7 +62,13 @@ async def request_context_middleware(request: Request, call_next: Callable):
     response = await call_next(request)
     duration_ms = (time.time() - start_time) * 1000
     response.headers["X-Request-ID"] = request_id
-    logger.info("RES %s %s %s %.2fms", request_id, response.status_code, request.url.path, duration_ms)
+    logger.info(
+        "RES %s %s %s %.2fms",
+        request_id,
+        response.status_code,
+        request.url.path,
+        duration_ms,
+    )
     return response
 
 
@@ -72,7 +78,9 @@ def _error_response(status_code: int, error: str, detail: str) -> JSONResponse:
 
 
 @app.exception_handler(SubscriptionError)
-async def subscription_error_handler(_: Request, exc: SubscriptionError) -> JSONResponse:
+async def subscription_error_handler(
+    _: Request, exc: SubscriptionError
+) -> JSONResponse:
     logger.error("Subscription error: %s", exc, exc_info=True)
     return _error_response(400, "subscription_error", str(exc))
 
@@ -90,7 +98,9 @@ async def database_error_handler(_: Request, exc: DatabaseError) -> JSONResponse
 
 
 @app.exception_handler(MeshtasticCommandError)
-async def meshtastic_error_handler(_: Request, exc: MeshtasticCommandError) -> JSONResponse:
+async def meshtastic_error_handler(
+    _: Request, exc: MeshtasticCommandError
+) -> JSONResponse:
     logger.error("Meshtastic command error: %s", exc, exc_info=True)
     return _error_response(502, "meshtastic_error", str(exc))
 
@@ -118,9 +128,9 @@ app.include_router(router)
 # Serve the dashboard static files (must be last, as it catches all routes)
 dashboard_dist = Path(__file__).parent.parent.parent / "dashboard" / "dist"
 if dashboard_dist.exists():
-    app.mount("/", StaticFiles(directory=str(dashboard_dist), html=True), name="dashboard")
+    app.mount(
+        "/", StaticFiles(directory=str(dashboard_dist), html=True), name="dashboard"
+    )
     logger.info("Serving dashboard from %s", dashboard_dist)
 else:
     logger.warning("Dashboard dist directory not found at %s", dashboard_dist)
-
-

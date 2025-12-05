@@ -40,12 +40,18 @@ def command_service(monkeypatch):
         "message_count": 50,
     }
     stats_service.get_hourly_breakdown_today.return_value = [
-        {"hour": 12, "average_gateways": 4.0, "max_gateways": 6, "min_gateways": 2, "message_count": 5}
+        {
+            "hour": 12,
+            "average_gateways": 4.0,
+            "max_gateways": 6,
+            "min_gateways": 2,
+            "message_count": 5,
+        }
     ]
 
     subscription_service = MagicMock()
     subscription_service.get_user_subscriptions.return_value = []
-    
+
     # Mock user lookup: Meshtastic node ID 1234 → database user.id 1234
     mock_user = MagicMock()
     mock_user.id = 1234
@@ -193,7 +199,9 @@ def test_on_receive_processes_public_text_message(command_service):
     sender_id = int("00AB12CD", 16)
     service._process_command.assert_called_once_with(sender_id, "!stats today")
     # _send_response now always includes raw_destination so DMs go back to the exact node ID
-    service._send_response.assert_called_once_with(sender_id, "ok", raw_destination="!00AB12CD")
+    service._send_response.assert_called_once_with(
+        sender_id, "ok", raw_destination="!00AB12CD"
+    )
     service._post_to_channel.assert_called_once_with("ok")
 
 
@@ -216,12 +224,12 @@ def test_rate_limit_allows_burst(command_service):
     """Test that burst limit allows specified number of quick commands."""
     service, *_ = command_service
     user_id = 12345
-    
+
     # Should allow 3 commands (burst limit) quickly
     assert service._check_rate_limit(user_id) is True
     assert service._check_rate_limit(user_id) is True
     assert service._check_rate_limit(user_id) is True
-    
+
     # 4th command should be rate limited
     assert service._check_rate_limit(user_id) is False
 
@@ -230,24 +238,25 @@ def test_rate_limit_resets_after_window(command_service, monkeypatch):
     """Test that rate limit resets after the time window."""
     service, *_ = command_service
     user_id = 12345
-    
+
     import time
+
     current_time = 1000.0
-    
+
     def mock_time():
         return current_time
-    
-    monkeypatch.setattr(time, 'time', mock_time)
-    
+
+    monkeypatch.setattr(time, "time", mock_time)
+
     # Use up burst limit
     assert service._check_rate_limit(user_id) is True
     assert service._check_rate_limit(user_id) is True
     assert service._check_rate_limit(user_id) is True
     assert service._check_rate_limit(user_id) is False
-    
+
     # Advance time past the window
     current_time = 1011.0  # 11 seconds later
-    
+
     # Should allow commands again
     assert service._check_rate_limit(user_id) is True
 
@@ -257,13 +266,13 @@ def test_rate_limit_per_user(command_service):
     service, *_ = command_service
     user1 = 111
     user2 = 222
-    
+
     # User 1 uses up burst
     assert service._check_rate_limit(user1) is True
     assert service._check_rate_limit(user1) is True
     assert service._check_rate_limit(user1) is True
     assert service._check_rate_limit(user1) is False
-    
+
     # User 2 should still be able to send commands
     assert service._check_rate_limit(user2) is True
     assert service._check_rate_limit(user2) is True
@@ -273,25 +282,25 @@ def test_rate_limit_per_user(command_service):
 def test_rate_limit_tracker_cleanup(command_service, monkeypatch):
     """Test that old rate limit entries are cleaned up."""
     service, *_ = command_service
-    
+
     import time
+
     current_time = 1000.0
-    
+
     def mock_time():
         return current_time
-    
-    monkeypatch.setattr(time, 'time', mock_time)
-    
+
+    monkeypatch.setattr(time, "time", mock_time)
+
     # Add entries for many users
     for i in range(150):
         service._check_rate_limit(i)
-    
+
     # Advance time
     current_time = 2000.0  # 1000 seconds later
-    
+
     # Add one more entry (should trigger cleanup)
     service._check_rate_limit(999)
-    
+
     # Old entries should be cleaned up
     assert len(service._rate_limit_tracker) < 150
-

@@ -97,8 +97,7 @@ class MessageRepository(BaseRepository):
             stmt = select(Message).order_by(Message.timestamp.desc()).limit(n)
             if include_gateways:
                 stmt = stmt.options(
-                    joinedload(Message.gateways),
-                    joinedload(Message.sender)
+                    joinedload(Message.gateways), joinedload(Message.sender)
                 )
                 return list(self.session.execute(stmt).scalars().unique().all())
             return list(self.session.execute(stmt).scalars().all())
@@ -108,15 +107,23 @@ class MessageRepository(BaseRepository):
     def get_today(self) -> List[Message]:
         """Retrieve messages recorded today (UTC)."""
 
-        start_of_day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_of_day = datetime.utcnow().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
         self.logger.debug("Fetching messages since %s", start_of_day)
         try:
-            stmt = select(Message).where(Message.timestamp >= start_of_day).order_by(Message.timestamp.asc())
+            stmt = (
+                select(Message)
+                .where(Message.timestamp >= start_of_day)
+                .order_by(Message.timestamp.asc())
+            )
             return list(self.session.execute(stmt).scalars().all())
         except Exception as exc:
             self._handle_exception("get today messages", exc)
 
-    def get_by_date_range(self, start_date: datetime, end_date: datetime) -> List[Message]:
+    def get_by_date_range(
+        self, start_date: datetime, end_date: datetime
+    ) -> List[Message]:
         """Retrieve messages between two timestamps."""
 
         self.logger.debug("Fetching messages between %s and %s", start_date, end_date)
@@ -133,10 +140,16 @@ class MessageRepository(BaseRepository):
     def get_count_today(self) -> int:
         """Count messages recorded today."""
 
-        start_of_day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_of_day = datetime.utcnow().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
         self.logger.debug("Counting messages since %s", start_of_day)
         try:
-            stmt = select(func.count()).select_from(Message).where(Message.timestamp >= start_of_day)
+            stmt = (
+                select(func.count())
+                .select_from(Message)
+                .where(Message.timestamp >= start_of_day)
+            )
             return self.session.execute(stmt).scalar_one()
         except Exception as exc:
             self._handle_exception("get count today", exc)
@@ -176,7 +189,9 @@ class MessageRepository(BaseRepository):
         except Exception as exc:
             self._handle_exception("delete message", exc)
 
-    def add_gateway(self, message: Message, gateway_id: str) -> Optional[MessageGateway]:
+    def add_gateway(
+        self, message: Message, gateway_id: str
+    ) -> Optional[MessageGateway]:
         """Record an individual gateway relay for a message."""
 
         gateway_id = (gateway_id or "").strip()
@@ -186,7 +201,8 @@ class MessageRepository(BaseRepository):
         try:
             existing = self.session.execute(
                 select(MessageGateway).where(
-                    MessageGateway.message_id == message.id, MessageGateway.gateway_id == gateway_id
+                    MessageGateway.message_id == message.id,
+                    MessageGateway.gateway_id == gateway_id,
                 )
             ).scalar_one_or_none()
             if existing:
@@ -209,13 +225,16 @@ class MessageRepository(BaseRepository):
             self.session.rollback()
             return self.session.execute(
                 select(MessageGateway).where(
-                    MessageGateway.message_id == message.id, MessageGateway.gateway_id == gateway_id
+                    MessageGateway.message_id == message.id,
+                    MessageGateway.gateway_id == gateway_id,
                 )
             ).scalar_one_or_none()
         except Exception as exc:
             self._handle_exception("add gateway", exc)
 
-    def get_inactive_routers(self, threshold_minutes: int) -> List[tuple[str, datetime, str]]:
+    def get_inactive_routers(
+        self, threshold_minutes: int
+    ) -> List[tuple[str, datetime, str]]:
         """
         Find routers (devices with ROUTER or ROUTER_CLIENT role) that haven't been seen in the last N minutes.
         Returns a list of (gateway_id, last_seen_timestamp, username) tuples.
@@ -229,16 +248,15 @@ class MessageRepository(BaseRepository):
             subquery = (
                 select(
                     MessageGateway.gateway_id,
-                    func.max(MessageGateway.created_at).label("last_seen")
+                    func.max(MessageGateway.created_at).label("last_seen"),
                 )
                 .group_by(MessageGateway.gateway_id)
                 .where(MessageGateway.created_at < cutoff_time)
             ).subquery()
 
             # Get all routers and router_clients from Users
-            router_users = (
-                select(User.user_id, User.username)
-                .where(User.role.in_([ROLE_ROUTER, ROLE_ROUTER_CLIENT]))
+            router_users = select(User.user_id, User.username).where(
+                User.role.in_([ROLE_ROUTER, ROLE_ROUTER_CLIENT])
             )
             router_results = self.session.execute(router_users).all()
 
@@ -247,8 +265,9 @@ class MessageRepository(BaseRepository):
 
             # Get inactive gateways
             inactive_gateways = self.session.execute(
-                select(subquery.c.gateway_id, subquery.c.last_seen)
-                .order_by(subquery.c.last_seen.asc())
+                select(subquery.c.gateway_id, subquery.c.last_seen).order_by(
+                    subquery.c.last_seen.asc()
+                )
             ).all()
 
             # Filter to only include routers by converting gateway_id to user_id
@@ -270,4 +289,3 @@ class MessageRepository(BaseRepository):
             return result
         except Exception as exc:
             self._handle_exception("get inactive routers", exc)
-

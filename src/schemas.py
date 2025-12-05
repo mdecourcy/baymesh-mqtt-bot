@@ -126,4 +126,3 @@ class ErrorResponse(APIModel):
     error: str
     detail: str
     status_code: int
-

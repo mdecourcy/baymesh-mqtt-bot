@@ -54,7 +54,9 @@ class SubscriptionService:
         user = self._get_user_by_mesh_id(user_mesh_id)
         subscription = self.subscription_repo.get_by_user_id(user.id)
         if not subscription:
-            self.logger.info("User %s has no active subscriptions to remove", user_mesh_id)
+            self.logger.info(
+                "User %s has no active subscriptions to remove", user_mesh_id
+            )
             return False
         self.logger.info("Unsubscribing user %s from all subscriptions", user_mesh_id)
         self.subscription_repo.update(subscription.id, is_active=False)
@@ -85,7 +87,9 @@ class SubscriptionService:
 
         return self.subscription_repo.get_all_active()
 
-    def format_message_for_subscription(self, subscription_type: str, stats: Dict[str, object]) -> str:
+    def format_message_for_subscription(
+        self, subscription_type: str, stats: Dict[str, object]
+    ) -> str:
         """
         Render a subscription update message from stats.
         """
@@ -107,11 +111,12 @@ class SubscriptionService:
             return SubscriptionType(subscription_type)
         except ValueError as exc:
             self.logger.error("Invalid subscription type: %s", subscription_type)
-            raise SubscriptionError(f"Invalid subscription type: {subscription_type}") from exc
+            raise SubscriptionError(
+                f"Invalid subscription type: {subscription_type}"
+            ) from exc
 
     def _get_user_by_mesh_id(self, user_mesh_id: int):
         user = self.user_repo.get_by_user_id(user_mesh_id)
         if not user:
             raise SubscriptionError(f"User with mesh id {user_mesh_id} not found")
         return user
-

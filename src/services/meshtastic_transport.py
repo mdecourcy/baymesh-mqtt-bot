@@ -28,19 +28,23 @@ def build_meshtastic_interface(connection_url: str):
     if connection_url.startswith("serial://"):
         path = connection_url.replace("serial://", "", 1)
         if not path:
-            raise MeshtasticTransportError("Serial connection URL must include a device path")
+            raise MeshtasticTransportError(
+                "Serial connection URL must include a device path"
+            )
         return serial_interface.SerialInterface(path)
 
     if connection_url.startswith("tcp://"):
         host_port = connection_url.replace("tcp://", "", 1)
         if not host_port:
-            raise MeshtasticTransportError("TCP connection URL must include host information")
+            raise MeshtasticTransportError(
+                "TCP connection URL must include host information"
+            )
         host, _, port_str = host_port.partition(":")
         if not host:
             raise MeshtasticTransportError("TCP connection URL must include a hostname")
         port = int(port_str) if port_str else 4403
         return tcp_interface.TCPInterface(hostname=host, portNumber=port)
 
-    raise MeshtasticTransportError(f"Unsupported MESHTASTIC_CONNECTION_URL: {connection_url}")
-
-
+    raise MeshtasticTransportError(
+        f"Unsupported MESHTASTIC_CONNECTION_URL: {connection_url}"
+    )

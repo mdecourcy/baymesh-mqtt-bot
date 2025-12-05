@@ -30,7 +30,9 @@ engine: Engine = create_engine(
     connect_args=connect_args,
 )
 
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)
+SessionLocal = sessionmaker(
+    bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True
+)
 
 Base = declarative_base()
 
@@ -63,6 +65,3 @@ def db_healthcheck() -> bool:
         return True
     except Exception:
         return False
-
-
-
