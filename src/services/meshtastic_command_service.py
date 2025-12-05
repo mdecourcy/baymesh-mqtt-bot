@@ -382,10 +382,8 @@ class MeshtasticCommandService:
                 base = f"{row['hour']:02d}h → {row['message_count']} msgs, avg {row['average_gateways']:.1f}"  # noqa: E501
                 p50 = row.get("p50_gateways")
                 if p50 is not None:
-                    base += f", p50 {p50:.0f}, p90 {row.get(
-                        'p90_gateways',
-                        0
-                    ):.0f}"
+                    p90 = row.get("p90_gateways", 0)
+                    base += f", p50 {p50:.0f}, p90 {p90:.0f}"
                 lines.append(base)
             return "Hourly breakdown:\n" + "\n".join(lines)
 

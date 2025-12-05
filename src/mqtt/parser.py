@@ -61,10 +61,8 @@ class ProtobufMessageParser:
                 self._append_key(key)
         if self._keyring:
             self.logger.info(
-                "Meshtastic parser loaded %s decryption key(
-                    s)",
-                    len(self._keyring
-                )
+                "Meshtastic parser loaded %s decryption key(s)",
+                len(self._keyring),
             )
 
     # ------------------------------------------------------------------ #

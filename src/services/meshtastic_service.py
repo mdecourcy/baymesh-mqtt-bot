@@ -49,9 +49,7 @@ class MeshtasticService:
             self.mode = "cli"
         elif self.connection_url:
             self.logger.warning(
-                "Meshtastic CLI not found; falling back to python interface (
-                    %s
-                )",
+                "Meshtastic CLI not found; falling back to python interface (%s)",
                 self.connection_url,
             )
             try:

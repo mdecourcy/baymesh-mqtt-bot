@@ -222,9 +222,7 @@ class SchedulerManager:
         for attempt in range(1, max_retries + 1):
             try:
                 self.logger.info(
-                    "Attempting to send daily broadcast to channel %d (
-                        attempt %d/%d
-                    )",
+                    "Attempting to send daily broadcast to channel %d (attempt %d/%d)",
                     self._broadcast_channel,
                     attempt,
                     max_retries,
