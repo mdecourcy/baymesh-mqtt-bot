@@ -74,15 +74,11 @@ async def request_context_middleware(request: Request, call_next: Callable):
     return response
 
 
-def _error_response(
-    status_code: int, error: str, detail: str
-) -> JSONResponse:
+def _error_response(status_code: int, error: str, detail: str) -> JSONResponse:
     payload = ErrorResponse(
         error=error, detail=detail, status_code=status_code
     )
-    return JSONResponse(
-        status_code=status_code, content=payload.model_dump()
-    )
+    return JSONResponse(status_code=status_code, content=payload.model_dump())
 
 
 @app.exception_handler(SubscriptionError)

@@ -39,7 +39,9 @@ class StatsService:
         try:
             last_message = self.message_repo.get_last_n(1)
             if not last_message:
-                self.logger.info("No messages available for last message stats")  # noqa: E501
+                self.logger.info(
+                    "No messages available for last message stats"
+                )  # noqa: E501
                 return {}
 
             return self._message_to_dict(last_message[0])
@@ -74,7 +76,9 @@ class StatsService:
         except Exception as exc:
             self._raise_stats_error("get last message stats for user", exc)
 
-    def get_last_n_stats_for_user(self, user_id: int, n: int) -> List[Dict[str, Any]]:  # noqa: E501
+    def get_last_n_stats_for_user(
+        self, user_id: int, n: int
+    ) -> List[Dict[str, Any]]:  # noqa: E501
         """
         Return the latest N message stats for a specific user.
         """
@@ -107,9 +111,7 @@ class StatsService:
             end = datetime.now(timezone.utc)
             start = end - timedelta(hours=24)
             return self._aggregate_rolling_window(
-                start,
-                end,
-                window_label="24h"
+                start, end, window_label="24h"
             )
         except Exception as exc:
             self._raise_stats_error("get last 24h stats", exc)
@@ -130,9 +132,7 @@ class StatsService:
             end = datetime.now(timezone.utc)
             start = end - timedelta(days=days)
             return self._aggregate_rolling_window(
-                start,
-                end,
-                window_label=f"{days}d"
+                start, end, window_label=f"{days}d"
             )
         except Exception as exc:
             self._raise_stats_error(f"get last {days}d stats", exc)
@@ -163,7 +163,10 @@ class StatsService:
             self._raise_stats_error("get date stats", exc)
 
     def calculate_aggregation(
-        self, metric_type: str, start_datetime: datetime, end_datetime: datetime  # noqa: E501
+        self,
+        metric_type: str,
+        start_datetime: datetime,
+        end_datetime: datetime,  # noqa: E501
     ) -> float:
         """
         Calculate a metric value for the supplied datetime range.
@@ -247,7 +250,9 @@ class StatsService:
         except Exception as exc:
             self._raise_stats_error("get comparison stats", exc)
 
-    def _calculate_percentage_change(self, current: float, previous: float) -> float:  # noqa: E501
+    def _calculate_percentage_change(
+        self, current: float, previous: float
+    ) -> float:  # noqa: E501
         """Calculate percentage change between two values."""
         if previous == 0:
             return 100.0 if current > 0 else 0.0
@@ -260,7 +265,9 @@ class StatsService:
     def _session(self):
         return self.message_repo.session
 
-    def _aggregate_stats(self, start: datetime, end: datetime) -> Dict[str, Any]:  # noqa: E501
+    def _aggregate_stats(
+        self, start: datetime, end: datetime
+    ) -> Dict[str, Any]:  # noqa: E501
         stmt = (
             select(
                 func.avg(Message.gateway_count).label("avg_gateways"),
@@ -290,7 +297,9 @@ class StatsService:
             "start_timestamp": self._as_aware(result.first_ts)
             if result.first_ts
             else None,
-            "end_timestamp": self._as_aware(result.last_ts) if result.last_ts else None,  # noqa: E501
+            "end_timestamp": self._as_aware(result.last_ts)
+            if result.last_ts
+            else None,  # noqa: E501
         }
 
         # Calculate percentiles if there are messages
@@ -308,10 +317,7 @@ class StatsService:
             )
 
         self.logger.debug(
-            "Aggregated stats between %s and %s: %s",
-            start,
-            end,
-            stats
+            "Aggregated stats between %s and %s: %s", start, end, stats
         )
         return stats
 
@@ -332,7 +338,9 @@ class StatsService:
             stats["window"] = window_label
         return stats
 
-    def _hourly_breakdown(self, start: datetime, end: datetime) -> List[Dict[str, Any]]:  # noqa: E501
+    def _hourly_breakdown(
+        self, start: datetime, end: datetime
+    ) -> List[Dict[str, Any]]:  # noqa: E501
         session = self._session
         dialect = session.bind.dialect.name if session.bind else "sqlite"
         if dialect == "sqlite":
@@ -392,9 +400,10 @@ class StatsService:
             breakdown.append(hour_stats)
 
         self.logger.debug(
-            "Hourly breakdown between %s and %s: %s entries", start, end, len(
-                breakdown
-            )
+            "Hourly breakdown between %s and %s: %s entries",
+            start,
+            end,
+            len(breakdown),
         )
         return breakdown
 
@@ -439,7 +448,8 @@ class StatsService:
             upper = min(lower + 1, n - 1)
             weight = index - lower
             return float(
-                sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight  # noqa: E501
+                sorted_values[lower] * (1 - weight)
+                + sorted_values[upper] * weight  # noqa: E501
             )
 
         return {

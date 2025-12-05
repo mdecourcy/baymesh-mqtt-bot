@@ -81,7 +81,7 @@ def test_packet_queue_handles_missing_gateway():
 
 
 def test_packet_queue_detects_late_arrivals():
-    """Test that late gateway arrivals (after group was persisted) are detected."""
+    """Test that late gateway arrivals (after group persisted) detected."""
     queue = MeshPacketQueue(grouping_duration=0.1)
 
     msg1 = {"message_id": 123, "gateway_id": "!abc", "from_id": 456}

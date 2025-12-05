@@ -128,7 +128,7 @@ def get_detailed_messages(
         gateways = []
         for gw in msg.gateways:
             gateway_name = None
-            # Extract node ID from gateway_id (remove ! prefix and convert hex to int)
+            # Extract node ID from gateway_id (remove ! prefix, hex->int)
             try:
                 node_id_hex = gw.gateway_id.replace("!", "")
                 node_id = int(node_id_hex, 16)
@@ -147,9 +147,7 @@ def get_detailed_messages(
             )
 
         # Use current username from User table, fallback to stored name
-        sender_name = (
-            msg.sender.username if msg.sender else msg.sender_name
-        )
+        sender_name = msg.sender.username if msg.sender else msg.sender_name
 
         result.append(
             DetailedMessageResponse(
@@ -175,9 +173,7 @@ def get_detailed_messages(
     response_model=DailyStatsResponse,
     tags=["Statistics"],
 )
-def get_today_stats(
-    db: Session = Depends(get_db)
-) -> DailyStatsResponse:
+def get_today_stats(db: Session = Depends(get_db)) -> DailyStatsResponse:
     """
     Return aggregate stats for the current UTC day.
     """
@@ -288,7 +284,7 @@ def get_user_last_n_messages(
     tags=["Statistics"],
 )
 def get_today_hourly_stats(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> List[HourlyStatsResponse]:
     """
     Return hourly breakdown for the current UTC day.
@@ -370,9 +366,8 @@ def unsubscribe_user(
     tags=["Subscriptions"],
 )
 def list_subscriptions(
-    subscription_type: str | None = Query(
-        None, description="Optional type filter"
-    ),
+    subscription_type: str
+    | None = Query(None, description="Optional type filter"),
     db: Session = Depends(get_db),
 ) -> List[SubscriptionResponse]:
     """
@@ -387,9 +382,7 @@ def list_subscriptions(
     else:
         subscriptions = subscription_service.get_all_active()
     logger.info("Listed subscriptions (type=%s)", subscription_type)
-    return [
-        SubscriptionResponse.model_validate(sub) for sub in subscriptions
-    ]
+    return [SubscriptionResponse.model_validate(sub) for sub in subscriptions]
 
 
 @router.post("/mock/message", tags=["Testing"])
@@ -571,9 +564,7 @@ def restart_command_service() -> dict:
         command_manager.start()
         get_status = getattr(command_manager, "get_status", None)
         status_details = get_status() if callable(get_status) else None
-        logger.info(
-            "Meshtastic command manager restarted via admin endpoint"
-        )
+        logger.info("Meshtastic command manager restarted via admin endpoint")
         return {
             "status": "restarted",
             "details": status_details,
@@ -658,9 +649,7 @@ def get_network_stats(db: Session = Depends(get_db)) -> dict:
     from datetime import datetime, timedelta
 
     # Total unique nodes (users)
-    total_nodes = (
-        db.execute(sql_select(func.count(User.id))).scalar() or 0
-    )
+    total_nodes = db.execute(sql_select(func.count(User.id))).scalar() or 0
 
     # Total unique gateways ever seen
     total_gateways = (
@@ -782,19 +771,15 @@ def get_database_info(db: Session = Depends(get_db)) -> dict:
     message_count = (
         db.execute(sql_select(func.count(Message.id))).scalar() or 0
     )
-    user_count = (
-        db.execute(sql_select(func.count(User.id))).scalar() or 0
-    )
+    user_count = db.execute(sql_select(func.count(User.id))).scalar() or 0
     gateway_count = (
-        db.execute(sql_select(func.count(MessageGateway.id))).scalar()
-        or 0
+        db.execute(sql_select(func.count(MessageGateway.id))).scalar() or 0
     )
     subscription_count = (
         db.execute(sql_select(func.count(Subscription.id))).scalar() or 0
     )
     cache_count = (
-        db.execute(sql_select(func.count(StatisticsCache.id))).scalar()
-        or 0
+        db.execute(sql_select(func.count(StatisticsCache.id))).scalar() or 0
     )
     command_log_count = (
         db.execute(sql_select(func.count(CommandLog.id))).scalar() or 0
@@ -828,12 +813,8 @@ def get_database_info(db: Session = Depends(get_db)) -> dict:
             + command_log_count,
         },
         "date_range": {
-            "oldest": (
-                oldest_message.isoformat() if oldest_message else None
-            ),
-            "newest": (
-                newest_message.isoformat() if newest_message else None
-            ),
+            "oldest": (oldest_message.isoformat() if oldest_message else None),
+            "newest": (newest_message.isoformat() if newest_message else None),
         },
     }
 
@@ -851,9 +832,9 @@ def expire_old_data(
     """
     Delete messages and related data older than the specified number of days.
     """
-    from sqlalchemy import func
-    from src.models import Message, StatisticsCache, CommandLog
     from datetime import timedelta
+
+    from src.models import CommandLog, Message, StatisticsCache
 
     cutoff_date = datetime.utcnow() - timedelta(days=days)
 

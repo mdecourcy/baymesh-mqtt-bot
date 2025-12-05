@@ -43,17 +43,18 @@ class MeshtasticService:
 
         if self.cli_path and shutil.which(self.cli_path.split()[0]):
             self.logger.debug(
-                "MeshtasticService using CLI path %s",
-                self.cli_path
+                "MeshtasticService using CLI path %s", self.cli_path
             )
             self.mode = "cli"
         elif self.connection_url:
             self.logger.warning(
-                "Meshtastic CLI not found; falling back to python interface (%s)",
+                "Meshtastic CLI not found; using python interface (%s)",
                 self.connection_url,
             )
             try:
-                self._interface = build_meshtastic_interface(self.connection_url)  # noqa: E501
+                self._interface = build_meshtastic_interface(
+                    self.connection_url
+                )  # noqa: E501
             except MeshtasticTransportError as exc:
                 raise MeshtasticCommandError(str(exc)) from exc
             self.mode = "python"
@@ -69,11 +70,9 @@ class MeshtasticService:
             raise ValueError("Message cannot be empty")
 
         self.logger.info(
-            "Sending Meshtastic message to %s (
-                len=%s)",
-                destination_id,
-                len(message
-            )
+            "Sending Meshtastic message to %s (len=%s)",
+            destination_id,
+            len(message),
         )
         if self.mode == "cli":
             return self._send_via_cli(destination_id, message, timeout)
@@ -83,7 +82,8 @@ class MeshtasticService:
             return True
         except Exception as exc:  # pragma: no cover - hardware interaction
             self.logger.error(
-                "Failed to send Meshtastic message via python interface: %s", exc  # noqa: E501
+                "Failed to send Meshtastic message via python interface: %s",
+                exc,  # noqa: E501
             )
             return False
 
@@ -93,9 +93,7 @@ class MeshtasticService:
         results: Dict[int, bool] = {}
         for recipient in recipients:
             results[recipient] = self.send_message(
-                recipient,
-                message,
-                timeout=timeout
+                recipient, message, timeout=timeout
             )
         return results
 
@@ -116,7 +114,7 @@ class MeshtasticService:
             return self._send_to_channel_via_cli(message, channel_id, timeout)
 
         try:
-            # For python interface, channelIndex parameter sends to a specific channel
+            # For python interface, channelIndex sends to specific channel
             self._interface.sendText(message, channelIndex=channel_id)
             return True
         except Exception as exc:  # pragma: no cover - hardware interaction
@@ -139,8 +137,7 @@ class MeshtasticService:
             self.logger.debug("Fetching node info for %s", node_id)
             try:
                 stdout, stderr, returncode = self._execute_command(
-                    cmd,
-                    timeout=timeout
+                    cmd, timeout=timeout
                 )
             except Exception:
                 self.logger.error("Failed to fetch node info", exc_info=True)
@@ -154,11 +151,15 @@ class MeshtasticService:
                 return None
             return {"raw": stdout.strip()}
 
-        self.logger.debug("Node info lookup not supported for python interface")  # noqa: E501
+        self.logger.debug(
+            "Node info lookup not supported for python interface"
+        )  # noqa: E501
         return None
 
     # ------------------------------------------------------------------ #
-    def _send_via_cli(self, destination_id: int, message: str, timeout: int) -> bool:  # noqa: E501
+    def _send_via_cli(
+        self, destination_id: int, message: str, timeout: int
+    ) -> bool:  # noqa: E501
         cmd = self._build_cli_command()
 
         cmd.extend(
@@ -171,28 +172,28 @@ class MeshtasticService:
         )
         try:
             stdout, stderr, returncode = self._execute_command(
-                cmd,
-                timeout=timeout
+                cmd, timeout=timeout
             )
         except TimeoutError:
             self.logger.error(
-                "Meshtastic CLI timed out sending to %s",
-                destination_id
+                "Meshtastic CLI timed out sending to %s", destination_id
             )
             return False
         except FileNotFoundError as exc:
             raise MeshtasticCommandError("Meshtastic CLI not found") from exc
         except Exception as exc:
-            raise MeshtasticCommandError("Failed to execute Meshtastic CLI") from exc  # noqa: E501
+            raise MeshtasticCommandError(
+                "Failed to execute Meshtastic CLI"
+            ) from exc  # noqa: E501
 
         if returncode == 0:
             self.logger.debug("Meshtastic send success: %s", stdout.strip())
             return True
 
         self.logger.error(
-            "Meshtastic send failed: rc=%s stderr=%s", returncode, stderr.strip(
-                
-            )
+            "Meshtastic send failed: rc=%s stderr=%s",
+            returncode,
+            stderr.strip(),
         )
         return False
 
@@ -212,8 +213,7 @@ class MeshtasticService:
         )
         try:
             stdout, stderr, returncode = self._execute_command(
-                cmd,
-                timeout=timeout
+                cmd, timeout=timeout
             )
         except TimeoutError:
             self.logger.error(
@@ -223,12 +223,13 @@ class MeshtasticService:
         except FileNotFoundError as exc:
             raise MeshtasticCommandError("Meshtastic CLI not found") from exc
         except Exception as exc:
-            raise MeshtasticCommandError("Failed to execute Meshtastic CLI") from exc  # noqa: E501
+            raise MeshtasticCommandError(
+                "Failed to execute Meshtastic CLI"
+            ) from exc  # noqa: E501
 
         if returncode == 0:
             self.logger.debug(
-                "Meshtastic channel send success: %s",
-                stdout.strip()
+                "Meshtastic channel send success: %s", stdout.strip()
             )
             return True
 
@@ -253,11 +254,13 @@ class MeshtasticService:
             return result.stdout, result.stderr, result.returncode
         except subprocess.TimeoutExpired as e:
             self.logger.error(
-                "Command timed out after %d seconds: %s", timeout, " ".join(
-                    cmd
-                )
+                "Command timed out after %d seconds: %s",
+                timeout,
+                " ".join(cmd),
             )
-            raise TimeoutError(f"Command timed out after {timeout} seconds") from e  # noqa: E501
+            raise TimeoutError(
+                f"Command timed out after {timeout} seconds"
+            ) from e  # noqa: E501
 
     def _build_cli_command(self) -> List[str]:
         if not self.cli_path:

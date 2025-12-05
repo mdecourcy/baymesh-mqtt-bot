@@ -32,8 +32,7 @@ def test_get_today_stats_returns_200(client: TestClient, sample_messages):
 
 
 def test_get_today_detailed_returns_hourly(
-    client: TestClient,
-    sample_messages
+    client: TestClient, sample_messages
 ):
     response = client.get("/stats/today/detailed")
     assert response.status_code == 200
@@ -59,8 +58,7 @@ def test_post_subscribe_validates_type(client: TestClient, sample_users):
 
 
 def test_delete_subscribe_removes_subscriptions(
-    client: TestClient,
-    sample_users
+    client: TestClient, sample_users
 ):
     user_id = sample_users[0].user_id
     client.post(f"/subscribe/{user_id}/daily_avg")
@@ -104,8 +102,7 @@ def test_invalid_date_format_returns_400(client: TestClient):
 
 
 def test_invalid_subscription_type_returns_400(
-    client: TestClient,
-    sample_users
+    client: TestClient, sample_users
 ):
     user_id = sample_users[0].user_id
     response = client.post(f"/subscribe/{user_id}/invalid-type")

@@ -45,7 +45,9 @@ class MQTTClient:
             decryption_keys=self.config.meshtastic_decryption_keys,
             include_default_key=self.config.meshtastic_include_default_key,
         )
-        self._packet_queue = MeshPacketQueue(grouping_duration=grouping_duration)  # noqa: E501
+        self._packet_queue = MeshPacketQueue(
+            grouping_duration=grouping_duration
+        )  # noqa: E501
         self._client = self._build_client()
         self._connected = False
         self._message_count_today = 0
@@ -95,7 +97,9 @@ class MQTTClient:
             self.logger.error(
                 "Failed to connect to MQTT broker: %s", exc, exc_info=True
             )
-            raise MQTTConnectionError("Could not connect to MQTT broker") from exc  # noqa: E501
+            raise MQTTConnectionError(
+                "Could not connect to MQTT broker"
+            ) from exc  # noqa: E501
 
     def disconnect(self) -> None:
         """
@@ -109,8 +113,7 @@ class MQTTClient:
             self._client.disconnect()
         except Exception:
             self.logger.warning(
-                "MQTT disconnect encountered an error",
-                exc_info=True
+                "MQTT disconnect encountered an error", exc_info=True
             )
 
     @property
@@ -128,7 +131,9 @@ class MQTTClient:
         if not self._connected_at:
             return "—"
 
-        uptime_seconds = (datetime.utcnow() - self._connected_at).total_seconds()  # noqa: E501
+        uptime_seconds = (
+            datetime.utcnow() - self._connected_at
+        ).total_seconds()  # noqa: E501
 
         if uptime_seconds < 60:
             return f"{int(uptime_seconds)}s"
@@ -233,8 +238,7 @@ class MQTTClient:
             self._connected_at = datetime.utcnow()
             topic = f"{self.config.mqtt_root_topic}/#"
             self.logger.info(
-                "Connected to MQTT broker. Subscribing to %s",
-                topic
+                "Connected to MQTT broker. Subscribing to %s", topic
             )
             client.subscribe(topic)
         else:
@@ -317,7 +321,9 @@ class MQTTClient:
             message = self._message_repo.get_by_message_id(message_id)
             if not message:
                 self.logger.warning(
-                    "Late gateway %s for unknown message %s", gateway_id, message_id  # noqa: E501
+                    "Late gateway %s for unknown message %s",
+                    gateway_id,
+                    message_id,  # noqa: E501
                 )
                 return
 
@@ -369,8 +375,7 @@ class MQTTClient:
                 ):
                     old_name = user.username
                     user = self._user_repo.update_username(
-                        sender_id,
-                        sender_name
+                        sender_id, sender_name
                     )
                     self.logger.info(
                         "Updated user name: %s → %s (%s)",
@@ -391,8 +396,7 @@ class MQTTClient:
 
         except Exception:
             self.logger.error(
-                "Failed to process NODEINFO packet",
-                exc_info=True
+                "Failed to process NODEINFO packet", exc_info=True
             )
 
     def _process_queue(self) -> None:
@@ -417,8 +421,7 @@ class MQTTClient:
 
             except Exception:
                 self.logger.error(
-                    "Error processing packet queue",
-                    exc_info=True
+                    "Error processing packet queue", exc_info=True
                 )
 
             time.sleep(5)
@@ -453,7 +456,9 @@ class MQTTClient:
         # Parse timestamp
         timestamp = first_env.get("timestamp")
         if isinstance(timestamp, datetime):
-            timestamp_dt = timestamp.astimezone(timezone.utc).replace(tzinfo=None)  # noqa: E501
+            timestamp_dt = timestamp.astimezone(timezone.utc).replace(
+                tzinfo=None
+            )  # noqa: E501
         else:
             timestamp_dt = datetime.utcnow()
 

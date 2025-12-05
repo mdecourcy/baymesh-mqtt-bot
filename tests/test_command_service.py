@@ -30,7 +30,11 @@ def command_service(monkeypatch):
         "timestamp": "2025-01-01T00:00:00Z",
     }
     stats_service.get_last_n_stats_for_user.return_value = [
-        {"message_id": "msg-1", "gateway_count": 3, "timestamp": "2025-01-01T00:00:00Z"}  # noqa: E501
+        {
+            "message_id": "msg-1",
+            "gateway_count": 3,
+            "timestamp": "2025-01-01T00:00:00Z",
+        }  # noqa: E501
     ]
     stats_service.get_today_stats.return_value = {
         "date": "2025-01-01",
@@ -148,10 +152,8 @@ def test_chunking(command_service):
     long_text = "word " * 100
     chunks = service._chunk_message(long_text, limit=50)
     assert all(len(chunk) <= 50 for chunk in chunks)
-    assert len(
-        "".join(chunks).replace(" ",
-        "")) == len(long_text.replace(" ",
-        "")
+    assert len("".join(chunks).replace(" ", "")) == len(
+        long_text.replace(" ", "")
     )
 
 
@@ -161,11 +163,8 @@ def test_chunk_preserves_lines(command_service):
     chunks = service._chunk_message(text, limit=40)
     assert all("\n\n" not in chunk for chunk in chunks)
     reconstructed = "\n".join(chunks).replace("\n", "")
-    assert reconstructed.replace(
-        " ",
-        "") == text.replace("\n",
-        "").replace(" ",
-        ""
+    assert reconstructed.replace(" ", "") == text.replace("\n", "").replace(
+        " ", ""
     )
 
 
@@ -207,7 +206,7 @@ def test_on_receive_processes_public_text_message(command_service):
     service._on_receive(packet, None)
     sender_id = int("00AB12CD", 16)
     service._process_command.assert_called_once_with(sender_id, "!stats today")
-    # _send_response now always includes raw_destination so DMs go back to the exact node ID
+    # _send_response includes raw_destination so DMs go to exact node ID
     service._send_response.assert_called_once_with(
         sender_id, "ok", raw_destination="!00AB12CD"
     )

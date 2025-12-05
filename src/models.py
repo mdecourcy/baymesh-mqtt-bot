@@ -53,9 +53,7 @@ class User(Base):
         Integer, nullable=False, unique=True, index=True
     )
     username: Mapped[str] = mapped_column(String(255), nullable=False)
-    mesh_id: Mapped[str | None] = mapped_column(
-        String(20), nullable=True
-    )
+    mesh_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
     role: Mapped[int | None] = mapped_column(
         Integer, nullable=True, index=True
     )
@@ -167,9 +165,7 @@ class Subscription(Base):
         DateTime, default=utcnow, onupdate=utcnow, nullable=False
     )
 
-    user: Mapped["User"] = relationship(
-        "User", back_populates="subscription"
-    )
+    user: Mapped["User"] = relationship("User", back_populates="subscription")
 
 
 class StatisticsCache(Base):

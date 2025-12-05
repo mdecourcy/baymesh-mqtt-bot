@@ -4,18 +4,16 @@ Repository layer tests.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
-
-from src.models import SubscriptionType, User
+from src.models import SubscriptionType
 from src.repository.message_repo import MessageRepository
 from src.repository.subscription_repo import SubscriptionRepository
 from src.repository.user_repo import UserRepository
 
 
 def test_create_message_stores_correctly(
-    message_repo: MessageRepository,
-    sample_users
+    message_repo: MessageRepository, sample_users
 ):
     user = sample_users[0]
     timestamp = datetime.utcnow()
@@ -49,7 +47,8 @@ def test_get_today_messages_filters_by_date(
 ):
     today_messages = message_repo.get_today()
     assert all(
-        msg.timestamp.date() == datetime.utcnow().date() for msg in today_messages  # noqa: E501
+        msg.timestamp.date() == datetime.utcnow().date()
+        for msg in today_messages  # noqa: E501
     )
 
 
@@ -65,8 +64,7 @@ def test_message_not_found_returns_none(message_repo: MessageRepository):
 
 
 def test_add_gateway_updates_count(
-    message_repo: MessageRepository,
-    sample_users
+    message_repo: MessageRepository, sample_users
 ):
     user = sample_users[0]
     timestamp = datetime.utcnow()
@@ -107,14 +105,13 @@ def test_create_message_without_gateway_defaults_count(
     assert message.gateway_count == 5
 
 
-# Subscription repository tests ------------------------------------------------
+# Subscription repository tests -----------------------------------------------
 def test_create_subscription_succeeds(
     subscription_repo: SubscriptionRepository, sample_users
 ):
     user = sample_users[0]
     subscription = subscription_repo.create(
-        user.id,
-        SubscriptionType.DAILY_AVG
+        user.id, SubscriptionType.DAILY_AVG
     )
     assert subscription.id is not None
     assert subscription.subscription_type == SubscriptionType.DAILY_AVG
@@ -132,8 +129,7 @@ def test_is_subscribed_returns_boolean(
 ):
     sample = sample_subscriptions[0]
     assert subscription_repo.is_subscribed(
-        sample.user_id,
-        sample.subscription_type
+        sample.user_id, sample.subscription_type
     )
     assert not subscription_repo.is_subscribed(
         sample.user_id, SubscriptionType.DAILY_HIGH
@@ -150,7 +146,7 @@ def test_unsubscribe_deactivates_correctly(
     assert not refreshed.is_active
 
 
-# User repository tests --------------------------------------------------------
+# User repository tests -------------------------------------------------------
 def test_create_user_succeeds(user_repo: UserRepository):
     user = user_repo.create(7777, "Tester", "mesh7777")
     assert user.id is not None

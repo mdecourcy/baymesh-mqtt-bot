@@ -41,9 +41,7 @@ class MessageRepository(BaseRepository):
         """Persist a new message."""
 
         self.logger.debug(
-            "Creating message %s for sender %s",
-            message_id,
-            sender_id
+            "Creating message %s for sender %s", message_id, sender_id
         )
         try:
             initial_gateway_count = gateway_count if not gateway_id else 0
@@ -93,7 +91,9 @@ class MessageRepository(BaseRepository):
         except Exception as exc:
             self._handle_exception("get message by message_id", exc)
 
-    def get_last_n(self, n: int, include_gateways: bool = False) -> List[Message]:  # noqa: E501
+    def get_last_n(
+        self, n: int, include_gateways: bool = False
+    ) -> List[Message]:  # noqa: E501
         """Retrieve the latest N messages ordered by timestamp desc."""
 
         self.logger.debug("Fetching last %s messages", n)
@@ -103,7 +103,9 @@ class MessageRepository(BaseRepository):
                 stmt = stmt.options(
                     joinedload(Message.gateways), joinedload(Message.sender)
                 )
-                return list(self.session.execute(stmt).scalars().unique().all())  # noqa: E501
+                return list(
+                    self.session.execute(stmt).scalars().unique().all()
+                )  # noqa: E501
             return list(self.session.execute(stmt).scalars().all())
         except Exception as exc:
             self._handle_exception("get last n messages", exc)
@@ -131,16 +133,14 @@ class MessageRepository(BaseRepository):
         """Retrieve messages between two timestamps."""
 
         self.logger.debug(
-            "Fetching messages between %s and %s",
-            start_date,
-            end_date
+            "Fetching messages between %s and %s", start_date, end_date
         )
         try:
             stmt = (
                 select(Message)
                 .where(
                     Message.timestamp >= start_date,
-                    Message.timestamp <= end_date
+                    Message.timestamp <= end_date,
                 )
                 .order_by(Message.timestamp.asc())
             )
@@ -169,9 +169,7 @@ class MessageRepository(BaseRepository):
         """Retrieve the latest N messages for a specific user."""
 
         self.logger.debug(
-            "Fetching last %s messages for user_id=%s",
-            n,
-            user_id
+            "Fetching last %s messages for user_id=%s", n, user_id
         )
         try:
             stmt = (
@@ -224,8 +222,7 @@ class MessageRepository(BaseRepository):
                 return existing
 
             record = MessageGateway(
-                message_id=message.id,
-                gateway_id=gateway_id
+                message_id=message.id, gateway_id=gateway_id
             )
             self.session.add(record)
             self.session.flush()
@@ -288,7 +285,7 @@ class MessageRepository(BaseRepository):
                 )
             ).all()
 
-            # Filter to only include routers by converting gateway_id to user_id
+            # Filter to only include routers converting gateway_id to user_id
             result = []
             for gw_id, last_seen in inactive_gateways:
                 try:

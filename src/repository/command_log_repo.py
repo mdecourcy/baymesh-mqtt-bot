@@ -46,7 +46,11 @@ class CommandLogRepository:
 
     def get_recent_commands(self, limit: int = 100) -> List[CommandLog]:
         """Get the most recent command logs."""
-        stmt = select(CommandLog).order_by(CommandLog.timestamp.desc()).limit(limit)  # noqa: E501
+        stmt = (
+            select(CommandLog)
+            .order_by(CommandLog.timestamp.desc())
+            .limit(limit)
+        )  # noqa: E501
         return list(self.session.execute(stmt).scalars().all())
 
     def get_command_stats(self, days: int = 30) -> Dict[str, Any]:
@@ -60,7 +64,9 @@ class CommandLogRepository:
         total_commands = self.session.execute(total_stmt).scalar() or 0
 
         # Unique users
-        unique_users_stmt = select(func.count(func.distinct(CommandLog.user_id))).where(  # noqa: E501
+        unique_users_stmt = select(
+            func.count(func.distinct(CommandLog.user_id))
+        ).where(  # noqa: E501
             CommandLog.timestamp >= cutoff
         )
         unique_users = self.session.execute(unique_users_stmt).scalar() or 0
@@ -78,8 +84,7 @@ class CommandLogRepository:
         # Top commands
         top_commands_stmt = (
             select(
-                CommandLog.command,
-                func.count(CommandLog.id).label("count")
+                CommandLog.command, func.count(CommandLog.id).label("count")
             )
             .where(CommandLog.timestamp >= cutoff)
             .group_by(CommandLog.command)
@@ -104,7 +109,11 @@ class CommandLogRepository:
             .limit(10)
         )
         top_users = [
-            {"user_id": row.user_id, "username": row.username, "count": row.count}  # noqa: E501
+            {
+                "user_id": row.user_id,
+                "username": row.username,
+                "count": row.count,
+            }  # noqa: E501
             for row in self.session.execute(top_users_stmt).all()
         ]
 
@@ -127,7 +136,9 @@ class CommandLogRepository:
             "total_commands": total_commands,
             "unique_users": unique_users,
             "rate_limited_count": rate_limited_count,
-            "rate_limited_percentage": (rate_limited_count / total_commands * 100)  # noqa: E501
+            "rate_limited_percentage": (
+                rate_limited_count / total_commands * 100
+            )  # noqa: E501
             if total_commands > 0
             else 0,
             "top_commands": top_commands,

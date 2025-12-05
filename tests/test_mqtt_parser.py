@@ -68,8 +68,7 @@ def test_parser_decrypts_encrypted_packet_with_default_key():
 def test_parser_drops_encrypted_packet_without_keys():
     envelope = _build_envelope("secret text", encrypted=True)
     parser = ProtobufMessageParser(
-        decryption_keys=[],
-        include_default_key=False
+        decryption_keys=[], include_default_key=False
     )
     parsed = parser.parse_message(envelope.SerializeToString())
     assert parsed is None
@@ -79,8 +78,7 @@ def test_parser_skips_json_topics(caplog):
     parser = ProtobufMessageParser()
     with caplog.at_level("WARNING"):
         parsed = parser.parse_message(
-            b'{"foo": 1}',
-            topic="msh/US/bayarea/2/json"
+            b'{"foo": 1}', topic="msh/US/bayarea/2/json"
         )
     assert parsed is None
     assert not any(
@@ -106,7 +104,7 @@ def test_parser_respects_ok_to_mqtt_bitfield_zero():
 
 
 def test_parser_allows_messages_when_bitfield_nonzero():
-    """When bitfield is non-zero, TEXT_MESSAGE_APP messages should be processed."""
+    """When bitfield is non-zero, TEXT_MESSAGE_APP messages process."""
     envelope = _build_envelope("hello allowed", encrypted=False)
     data = envelope.packet.decoded
     if not hasattr(data, "bitfield"):

@@ -15,7 +15,7 @@ from src.services.stats_service import StatsService
 from src.services.subscription_service import SubscriptionService
 
 
-# StatsService tests -----------------------------------------------------------
+# StatsService tests ----------------------------------------------------------
 def test_get_last_message_stats_returns_dict(
     stats_service: StatsService, sample_messages
 ):
@@ -24,8 +24,7 @@ def test_get_last_message_stats_returns_dict(
 
 
 def test_get_last_n_stats_returns_sorted(
-    stats_service: StatsService,
-    sample_messages
+    stats_service: StatsService, sample_messages
 ):
     data = stats_service.get_last_n_stats(3)
     assert len(data) == 3
@@ -37,15 +36,14 @@ def test_get_today_stats_calculates_avg_max_min(
 ):
     stats = stats_service.get_today_stats()
     assert stats["max_gateways"] >= stats["min_gateways"]
-    # Implementation may include only a subset of messages for "today" depending
-    # on exact UTC day boundaries; we only require that at least one message is
-    # counted and that the count does not exceed the seeded sample size.
+    # Implementation may include subset of messages for "today" depending
+    # on UTC day boundaries; at least one message counted, not exceeding
+    # the seeded sample size.
     assert 0 < stats["message_count"] <= len(sample_messages)
 
 
 def test_get_today_stats_handles_empty_day(
-    stats_service: StatsService,
-    session
+    stats_service: StatsService, session
 ):
     session.query(Message).delete()
     stats = stats_service.get_today_stats()
@@ -89,21 +87,27 @@ def test_unsubscribe_user_deactivates_all(
     assert len(subs) == 0
 
 
-def test_format_message_daily_high_correct(subscription_service: SubscriptionService):  # noqa: E501
+def test_format_message_daily_high_correct(
+    subscription_service: SubscriptionService,
+):  # noqa: E501
     msg = subscription_service.format_message_for_subscription(
         "daily_high", {"max_gateways": 10, "message_count": 5}
     )
     assert "Peak" in msg
 
 
-def test_format_message_daily_low_correct(subscription_service: SubscriptionService):  # noqa: E501
+def test_format_message_daily_low_correct(
+    subscription_service: SubscriptionService,
+):  # noqa: E501
     msg = subscription_service.format_message_for_subscription(
         "daily_low", {"min_gateways": 1, "message_count": 5}
     )
     assert "Minimum" in msg
 
 
-def test_format_message_daily_avg_correct(subscription_service: SubscriptionService):  # noqa: E501
+def test_format_message_daily_avg_correct(
+    subscription_service: SubscriptionService,
+):  # noqa: E501
     msg = subscription_service.format_message_for_subscription(
         "daily_avg", {"average_gateways": 3.5, "message_count": 5}
     )
@@ -116,9 +120,7 @@ def test_send_message_calls_subprocess(monkeypatch):
     monkeypatch.setattr(
         "subprocess.run",
         MagicMock(
-            return_value=MagicMock(stdout="ok",
-            stderr="",
-            returncode=0)
+            return_value=MagicMock(stdout="ok", stderr="", returncode=0)
         ),
     )
     assert service.send_message(1, "hello")

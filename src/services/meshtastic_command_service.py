@@ -32,7 +32,9 @@ CHANNEL_ROLE_BY_VALUE = {
     value: name.upper() for name, value in channel_pb2.Channel.Role.items()
 }
 PUBLIC_CHANNEL_ROLES = {
-    name for name in CHANNEL_ROLE_BY_VALUE.values() if name in {"PRIMARY", "SECONDARY"}  # noqa: E501
+    name
+    for name in CHANNEL_ROLE_BY_VALUE.values()
+    if name in {"PRIMARY", "SECONDARY"}  # noqa: E501
 }
 
 
@@ -117,7 +119,9 @@ class MeshtasticCommandService:
             try:
                 self._initialize_listener()
                 self._reconnect_event.clear()
-                while self._running and not self._reconnect_event.wait(timeout=5):  # noqa: E501
+                while self._running and not self._reconnect_event.wait(
+                    timeout=5
+                ):  # noqa: E501
                     # Periodically wake up so we can respond to stop() even if
                     # no reconnect events are triggered.
                     pass
@@ -142,8 +146,7 @@ class MeshtasticCommandService:
             )
         except MeshtasticTransportError as exc:
             self.logger.error(
-                "Failed to initialize Meshtastic interface: %s",
-                exc
+                "Failed to initialize Meshtastic interface: %s", exc
             )
             raise
         if not self._receive_registered:
@@ -151,8 +154,7 @@ class MeshtasticCommandService:
             self._receive_registered = True
         if not self._disconnect_registered:
             pub.subscribe(
-                self._on_connection_lost,
-                "meshtastic.connection.lost"
+                self._on_connection_lost, "meshtastic.connection.lost"
             )
             self._disconnect_registered = True
         self._subscribed = True
@@ -165,14 +167,14 @@ class MeshtasticCommandService:
                 pub.unsubscribe(self._on_receive, "meshtastic.receive")
             except Exception:
                 self.logger.warning(
-                    "Failed to unsubscribe from meshtastic.receive", exc_info=True  # noqa: E501
+                    "Failed to unsubscribe from meshtastic.receive",
+                    exc_info=True,  # noqa: E501
                 )
             self._receive_registered = False
         if self._disconnect_registered:
             try:
                 pub.unsubscribe(
-                    self._on_connection_lost,
-                    "meshtastic.connection.lost"
+                    self._on_connection_lost, "meshtastic.connection.lost"
                 )
             except Exception:  # pragma: no cover - defensive
                 self.logger.warning(
@@ -194,9 +196,7 @@ class MeshtasticCommandService:
         self._schedule_reconnect("Meshtastic connection lost")
 
     def _schedule_reconnect(
-        self,
-        reason: str,
-        exc: Optional[Exception] = None
+        self, reason: str, exc: Optional[Exception] = None
     ) -> None:
         """
         Cleanly tear down the current interface and trigger a reconnect.
@@ -227,13 +227,13 @@ class MeshtasticCommandService:
             return
         if not self._is_text_message(decoded):
             self.logger.debug(
-                "Ignoring non-text Meshtastic packet with command prefix: %s", text  # noqa: E501
+                "Ignoring non-text Meshtastic packet with command prefix: %s",
+                text,  # noqa: E501
             )
             return
         if not self._is_public_channel(packet):
             self.logger.debug(
-                "Ignoring command on non-public channel: %s",
-                text
+                "Ignoring command on non-public channel: %s", text
             )
             return
         sender_raw = self._get_value(packet, "fromId")
@@ -252,7 +252,9 @@ class MeshtasticCommandService:
             self.logger.warning("Rate limit exceeded for user %s", sender_id)
             # Log rate-limited command
             try:
-                db_user = self.subscription_service.user_repo.get_by_user_id(sender_id)  # noqa: E501
+                db_user = self.subscription_service.user_repo.get_by_user_id(
+                    sender_id
+                )  # noqa: E501
                 if db_user:
                     self.command_log_repo.log_command(
                         user_id=sender_id,
@@ -264,8 +266,7 @@ class MeshtasticCommandService:
                     )
             except Exception:
                 self.logger.warning(
-                    "Failed to log rate-limited command",
-                    exc_info=True
+                    "Failed to log rate-limited command", exc_info=True
                 )
             self._send_response(
                 sender_id,
@@ -277,13 +278,13 @@ class MeshtasticCommandService:
         response = self._process_command(sender_id, text.strip())
         if response:
             self._send_response(
-                sender_id,
-                response,
-                raw_destination=sender_raw
+                sender_id, response, raw_destination=sender_raw
             )
             self._post_to_channel(response)
 
-    def _process_command(self, meshtastic_node_id: int, command: str) -> Optional[str]:  # noqa: E501
+    def _process_command(
+        self, meshtastic_node_id: int, command: str
+    ) -> Optional[str]:  # noqa: E501
         """Process command from a Meshtastic node ID (not database user.id)."""
         normalized = command.lower().strip()
         self.logger.info(
@@ -291,7 +292,9 @@ class MeshtasticCommandService:
         )
 
         # Convert Meshtastic node ID to database user.id for logging and queries
-        db_user = self.subscription_service.user_repo.get_by_user_id(meshtastic_node_id)  # noqa: E501
+        db_user = self.subscription_service.user_repo.get_by_user_id(
+            meshtastic_node_id
+        )  # noqa: E501
         if not db_user:
             db_user = self.subscription_service.user_repo.create(
                 meshtastic_node_id, f"node-{meshtastic_node_id}", None
@@ -454,17 +457,18 @@ class MeshtasticCommandService:
         )
 
     def _send_response(
-        self, destination_id: int, message: str, *, raw_destination: Any | None = None  # noqa: E501
+        self,
+        destination_id: int,
+        message: str,
+        *,
+        raw_destination: Any | None = None,  # noqa: E501
     ) -> None:
         try:
             chunks = self._chunk_message(message)
             for idx, chunk in enumerate(chunks):
                 if self._interface:
                     self.logger.info(
-                        "Sending Meshtastic direct response via interface to %s (
-                            chunk %s/%s,
-                            len=%s
-                        )",
+                        "Sending Meshtastic direct response via interface to %s (chunk %s/%s, len=%s)",
                         raw_destination
                         if raw_destination is not None
                         else destination_id,
@@ -488,17 +492,14 @@ class MeshtasticCommandService:
                         time.sleep(5.0)
                 else:
                     self.logger.info(
-                        "Sending Meshtastic response via service to %s (
-                            len=%s
-                        )",
+                        "Sending Meshtastic response via service to %s (len=%s)",
                         destination_id,
                         len(chunk),
                     )
                     self.meshtastic_service.send_message(destination_id, chunk)
         except Exception as exc:  # pragma: no cover - hardware dependent
             self.logger.error(
-                "Failed to send Meshtastic response",
-                exc_info=True
+                "Failed to send Meshtastic response", exc_info=True
             )
             # If sending fails, the underlying interface is very likely in a bad
             # state (e.g. BrokenPipeError). Trigger a reconnect so future
@@ -513,25 +514,23 @@ class MeshtasticCommandService:
             for chunk in self._chunk_message(message):
                 if self._interface:
                     self.logger.info(
-                        "Posting Meshtastic stats message to channel %s via interface (
-                            len=%s
-                        )",
+                        "Posting Meshtastic stats message to channel %s via interface (len=%s)",
                         channel_id,
                         len(chunk),
                     )
                     self._interface.sendText(chunk, destinationId=channel_id)
                 else:
                     self.logger.info(
-                        "Posting Meshtastic stats message to channel %s via service (
-                            len=%s
-                        )",
+                        "Posting Meshtastic stats message to channel %s via service (len=%s)",
                         channel_id,
                         len(chunk),
                     )
                     self.meshtastic_service.send_message(channel_id, chunk)
         except Exception as exc:  # pragma: no cover
             self.logger.warning(
-                "Failed to post stats message to channel %s", channel_id, exc_info=True  # noqa: E501
+                "Failed to post stats message to channel %s",
+                channel_id,
+                exc_info=True,  # noqa: E501
             )
             self._schedule_reconnect(
                 f"Failed to post stats message to channel {channel_id}", exc
@@ -581,7 +580,9 @@ class MeshtasticCommandService:
     def _cleanup_rate_limit_tracker(self) -> None:
         """Remove rate limit entries for users who haven't sent commands recently."""
         current_time = time.time()
-        cutoff_time = current_time - (self.rate_limit_seconds * 10)  # 10x the window  # noqa: E501
+        cutoff_time = current_time - (
+            self.rate_limit_seconds * 10
+        )  # 10x the window  # noqa: E501
 
         users_to_remove = [
             user_id
@@ -640,7 +641,11 @@ class MeshtasticCommandService:
             value = getattr(portnum, "name", "")
             return value.upper() if value else None
         if isinstance(portnum, int):
-            return "TEXT_MESSAGE_APP" if portnum == TEXT_MESSAGE_PORTNUM_VALUE else None  # noqa: E501
+            return (
+                "TEXT_MESSAGE_APP"
+                if portnum == TEXT_MESSAGE_PORTNUM_VALUE
+                else None
+            )  # noqa: E501
         return None
 
     def _is_public_channel(self, packet: Any) -> bool:
@@ -666,18 +671,12 @@ class MeshtasticCommandService:
                 return
             if isinstance(source, dict):
                 candidates.extend(
-                    source.get(
-                        key) for key in ("role",
-                        "role_name",
-                        "roleName"
-                    )
+                    source.get(key)
+                    for key in ("role", "role_name", "roleName")
                 )
                 candidates.extend(
-                    source.get(
-                        key) for key in ("public",
-                        "is_public",
-                        "isPublic"
-                    )
+                    source.get(key)
+                    for key in ("public", "is_public", "isPublic")
                 )
                 nested = source.get("settings")
                 if nested is not None:
@@ -708,7 +707,9 @@ class MeshtasticCommandService:
             return "PRIMARY" if value else "DISABLED"
         if isinstance(value, str):
             cleaned = value.strip().upper()
-            return cleaned if cleaned in CHANNEL_ROLE_BY_VALUE.values() else None  # noqa: E501
+            return (
+                cleaned if cleaned in CHANNEL_ROLE_BY_VALUE.values() else None
+            )  # noqa: E501
         if hasattr(value, "name"):
             cleaned = getattr(value, "name", "").upper()
             return cleaned if cleaned else None
@@ -747,7 +748,9 @@ class MeshtasticCommandService:
                 chunks.extend(self._split_long_line(line, limit))
                 continue
 
-            projected = ("\n".join(current) + ("\n" if current else "") + line).strip()  # noqa: E501
+            projected = (
+                "\n".join(current) + ("\n" if current else "") + line
+            ).strip()  # noqa: E501
             if projected and len(projected) > limit:
                 flush_current()
                 current = [line]

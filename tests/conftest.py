@@ -73,9 +73,7 @@ def session(temp_db: Engine) -> Generator[Session, None, None]:
     connection = temp_db.connect()
     transaction = connection.begin()
     SessionLocal = sessionmaker(
-        bind=connection,
-        future=True,
-        expire_on_commit=False
+        bind=connection, future=True, expire_on_commit=False
     )
     db_session = SessionLocal()
     try:
@@ -102,7 +100,9 @@ def user_repo(session: Session) -> UserRepository:
 
 
 @pytest.fixture
-def stats_service(message_repo: MessageRepository, session: Session) -> StatsService:  # noqa: E501
+def stats_service(
+    message_repo: MessageRepository, session: Session
+) -> StatsService:  # noqa: E501
     stats_cache_repo = StatisticsCacheRepository(session)
     return StatsService(message_repo, stats_cache_repo)
 
@@ -126,9 +126,7 @@ def mock_meshtastic_service(monkeypatch) -> MeshtasticService:
     sent_messages: List[tuple] = []
 
     def mock_send_message(
-        destination_id: int,
-        message: str,
-        timeout: int = 30
+        destination_id: int, message: str, timeout: int = 30
     ) -> bool:
         sent_messages.append((destination_id, message, timeout))
         return True
@@ -154,7 +152,9 @@ def sample_users(session: Session) -> List[User]:
 
 
 @pytest.fixture
-def sample_messages(session: Session, sample_users: List[User]) -> List[Message]:  # noqa: E501
+def sample_messages(
+    session: Session, sample_users: List[User]
+) -> List[Message]:  # noqa: E501
     """
     Seed 20 sample messages for testing.
     """
