@@ -188,6 +188,73 @@ class MessageRepository(BaseRepository):
         messages = self.get_last_n_for_user(user_id, 1)
         return messages[0] if messages else None
 
+    def get_last_n_for_user_with_gateways(
+        self, user_id: int, n: int
+    ) -> List[Message]:
+        """Retrieve the latest N messages for a specific user with gateways."""
+
+        self.logger.debug(
+            "Fetching last %s messages with gateways for user_id=%s",
+            n,
+            user_id,
+        )
+        try:
+            stmt = (
+                select(Message)
+                .where(Message.sender_id == user_id)
+                .order_by(Message.timestamp.desc())
+                .limit(n)
+                .options(
+                    joinedload(Message.gateways),
+                    joinedload(Message.sender),
+                )
+            )
+            return list(self.session.execute(stmt).scalars().unique().all())
+        except Exception as exc:
+            self._handle_exception(
+                "get last n messages with gateways for user", exc
+            )
+
+    def get_gateway_history_for_user(
+        self, user_id: int, limit: int
+    ) -> List[dict]:
+        """
+        Aggregate gateway usage for a user's messages.
+
+        Returns gateway_id, count, first_seen, last_seen ordered by last_seen.
+        """
+
+        self.logger.debug(
+            "Fetching gateway history for user_id=%s (limit=%s)",
+            user_id,
+            limit,
+        )
+        try:
+            stmt = (
+                select(
+                    MessageGateway.gateway_id,
+                    func.count().label("message_count"),
+                    func.min(MessageGateway.created_at).label("first_seen"),
+                    func.max(MessageGateway.created_at).label("last_seen"),
+                )
+                .join(Message, MessageGateway.message_id == Message.id)
+                .where(Message.sender_id == user_id)
+                .group_by(MessageGateway.gateway_id)
+                .order_by(func.max(MessageGateway.created_at).desc())
+                .limit(limit)
+            )
+            return [
+                {
+                    "gateway_id": row.gateway_id,
+                    "message_count": row.message_count,
+                    "first_seen": row.first_seen,
+                    "last_seen": row.last_seen,
+                }
+                for row in self.session.execute(stmt)
+            ]
+        except Exception as exc:
+            self._handle_exception("get gateway history for user", exc)
+
     def delete(self, message_id: int) -> bool:
         """Delete a message by ID."""
 

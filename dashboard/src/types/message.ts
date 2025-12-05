@@ -16,6 +16,22 @@ export interface GatewayInfo {
   created_at: string;
 }
 
+export interface GatewayHistory {
+  gateway_id: string;
+  gateway_name?: string | null;
+  message_count: number;
+  first_seen: string;
+  last_seen: string;
+}
+
+export interface GatewayPercentiles {
+  p50: number;
+  p90: number;
+  p95: number;
+  p99: number;
+  sample_size: number;
+}
+
 export interface DetailedMessage extends Message {
   payload?: string | null;
   gateways: GatewayInfo[];

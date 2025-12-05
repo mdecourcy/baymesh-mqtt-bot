@@ -55,6 +55,22 @@ class GatewayInfo(APIModel):
     created_at: datetime
 
 
+class GatewayHistoryResponse(APIModel):
+    gateway_id: str
+    gateway_name: Optional[str] = None
+    message_count: int
+    first_seen: datetime
+    last_seen: datetime
+
+
+class GatewayPercentilesResponse(APIModel):
+    p50: float
+    p90: float
+    p95: float
+    p99: float
+    sample_size: int
+
+
 class DetailedMessageResponse(APIModel):
     id: int
     message_id: str

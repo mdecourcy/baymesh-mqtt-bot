@@ -6,6 +6,7 @@ import Subscriptions from '@/pages/Subscriptions';
 import BotStats from '@/pages/BotStats';
 import Admin from '@/pages/Admin';
 import NotFound from '@/pages/NotFound';
+import UserDetail from '@/pages/UserDetail';
 
 const App = () => (
   <BrowserRouter>
@@ -16,6 +17,7 @@ const App = () => (
         <Route path="/subscriptions" element={<Subscriptions />} />
         <Route path="/bot" element={<BotStats />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/users/:userId" element={<UserDetail />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

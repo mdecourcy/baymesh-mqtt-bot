@@ -24,6 +24,8 @@ from src.schemas import (
     DailyStatsResponse,
     DetailedMessageResponse,
     GatewayInfo,
+    GatewayHistoryResponse,
+    GatewayPercentilesResponse,
     HealthResponse,
     HourlyStatsResponse,
     MessageResponse,
@@ -61,6 +63,24 @@ def _build_services(
         subscription_repo, user_repo, stats_service
     )
     return stats_service, subscription_service, message_repo, user_repo
+
+
+def _resolve_gateway_name(
+    gateway_id: str, user_repo: UserRepository
+) -> str | None:
+    """
+    Attempt to resolve a gateway_id to a username by decoding the node ID.
+    """
+
+    try:
+        node_id_hex = gateway_id.replace("!", "")
+        node_id = int(node_id_hex, 16)
+        gateway_user = user_repo.get_by_user_id(node_id)
+        if gateway_user:
+            return gateway_user.username
+    except (ValueError, AttributeError):
+        return None
+    return None
 
 
 @router.get("/stats/last", response_model=MessageResponse, tags=["Statistics"])
@@ -276,6 +296,177 @@ def get_user_last_n_messages(
     data = stats_service.get_last_n_stats_for_user(user.id, count)
     logger.info("Fetched last %s messages for user %s", count, user_id)
     return [MessageResponse.model_validate(item) for item in data]
+
+
+@router.get(
+    "/users/{user_id}/messages",
+    response_model=List[DetailedMessageResponse],
+    tags=["Users"],
+)
+def get_user_messages_with_gateways(
+    user_id: int,
+    limit: int = Query(
+        100, ge=1, le=500, description="Number of messages to fetch"
+    ),
+    db: Session = Depends(get_db),
+) -> List[DetailedMessageResponse]:
+    """
+    Return detailed messages (with gateways) for a specific user.
+    """
+
+    _, _, message_repo, user_repo = _build_services(db)
+    user = user_repo.get_by_user_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    messages = message_repo.get_last_n_for_user_with_gateways(user.id, limit)
+    result: List[DetailedMessageResponse] = []
+
+    for msg in messages:
+        gateways: List[GatewayInfo] = []
+        for gw in msg.gateways:
+            gateway_name = _resolve_gateway_name(gw.gateway_id, user_repo)
+            gateways.append(
+                GatewayInfo(
+                    gateway_id=gw.gateway_id,
+                    gateway_name=gateway_name,
+                    created_at=gw.created_at,
+                )
+            )
+        sender_name = msg.sender.username if msg.sender else msg.sender_name
+        result.append(
+            DetailedMessageResponse(
+                id=msg.id,
+                message_id=msg.message_id,
+                sender_name=sender_name,
+                sender_user_id=msg.sender.user_id if msg.sender else None,
+                gateway_count=msg.gateway_count,
+                timestamp=msg.timestamp,
+                rssi=msg.rssi,
+                snr=msg.snr,
+                payload=msg.payload,
+                gateways=gateways,
+            )
+        )
+
+    logger.info(
+        "Fetched %s detailed messages for user %s", len(result), user_id
+    )
+    return result
+
+
+@router.get(
+    "/users/{user_id}/gateways",
+    response_model=List[GatewayHistoryResponse],
+    tags=["Users"],
+)
+def get_user_gateway_history(
+    user_id: int,
+    limit: int = Query(
+        50,
+        ge=1,
+        le=200,
+        description="Number of gateways to return, ordered by last_seen",
+    ),
+    db: Session = Depends(get_db),
+) -> List[GatewayHistoryResponse]:
+    """
+    Return gateway history (counts and last seen) for a user's messages.
+    """
+
+    _, _, message_repo, user_repo = _build_services(db)
+    user = user_repo.get_by_user_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    history = message_repo.get_gateway_history_for_user(user.id, limit)
+    result: List[GatewayHistoryResponse] = []
+    for item in history:
+        gateway_name = _resolve_gateway_name(item["gateway_id"], user_repo)
+        result.append(
+            GatewayHistoryResponse(
+                gateway_id=item["gateway_id"],
+                gateway_name=gateway_name,
+                message_count=item["message_count"],
+                first_seen=item["first_seen"],
+                last_seen=item["last_seen"],
+            )
+        )
+
+    logger.info(
+        "Fetched %s gateway history entries for user %s",
+        len(result),
+        user_id,
+    )
+    return result
+
+
+@router.get(
+    "/users/{user_id}/gateway_percentiles",
+    response_model=GatewayPercentilesResponse,
+    tags=["Users"],
+)
+def get_user_gateway_percentiles(
+    user_id: int,
+    limit: int = Query(
+        500,
+        ge=10,
+        le=2000,
+        description="Number of recent messages to sample for percentiles",
+    ),
+    db: Session = Depends(get_db),
+) -> GatewayPercentilesResponse:
+    """
+    Return p50/p90/p95/p99 of gateway counts for a user's recent messages.
+    """
+
+    _, _, message_repo, user_repo = _build_services(db)
+    user = user_repo.get_by_user_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    messages = message_repo.get_last_n_for_user(user.id, limit)
+    counts = sorted(
+        [m.gateway_count for m in messages if m.gateway_count is not None]
+    )
+    sample_size = len(counts)
+    if sample_size == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No messages for user",
+        )
+
+    def percentile(values: list[int], pct: float) -> float:
+        if not values:
+            return 0.0
+        k = (len(values) - 1) * pct
+        f = int(k)
+        c = min(f + 1, len(values) - 1)
+        if f == c:
+            return float(values[int(k)])
+        d0 = values[f] * (c - k)
+        d1 = values[c] * (k - f)
+        return float(d0 + d1)
+
+    response = GatewayPercentilesResponse(
+        p50=percentile(counts, 0.50),
+        p90=percentile(counts, 0.90),
+        p95=percentile(counts, 0.95),
+        p99=percentile(counts, 0.99),
+        sample_size=sample_size,
+    )
+    logger.info(
+        "Fetched gateway percentiles for user %s (sample=%s)",
+        user_id,
+        sample_size,
+    )
+    return response
 
 
 @router.get(

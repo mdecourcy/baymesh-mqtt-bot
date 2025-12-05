@@ -1,6 +1,7 @@
 import type { Message } from '@/types/message';
 import { Card } from '@/components/common/Card';
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 
 interface TopSendersProps {
   messages: Message[];
@@ -68,7 +69,16 @@ export const TopSenders = ({ messages }: TopSendersProps) => {
               >
                 <td className="py-2">
                   <div className="font-medium text-slate-900 dark:text-white">
-                    {sender.sender_name}
+                    {sender.sender_user_id ? (
+                      <Link
+                        to={`/users/${sender.sender_user_id}`}
+                        className="text-emerald-600 dark:text-emerald-400 hover:underline"
+                      >
+                        {sender.sender_name}
+                      </Link>
+                    ) : (
+                      sender.sender_name
+                    )}
                   </div>
                   {formatMeshId(sender.sender_user_id) && (
                     <div className="text-xs text-slate-500 font-mono">
