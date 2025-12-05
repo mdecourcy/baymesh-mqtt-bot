@@ -209,9 +209,10 @@ class MeshtasticCommandService:
             sock = getattr(stream, "sock", None)
             if sock and hasattr(sock, "settimeout"):
                 # Use a larger timeout to reduce poll frequency further.
+                sock.setblocking(True)
                 sock.settimeout(5.0)
                 self.logger.info(
-                    "Applied 5s socket timeout to Meshtastic TCP interface"
+                    "Applied blocking socket with 5s timeout to Meshtastic TCP interface"
                 )
         except Exception:
             self.logger.debug(
