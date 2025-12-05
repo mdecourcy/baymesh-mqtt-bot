@@ -144,9 +144,9 @@ class MeshtasticCommandService:
             self._interface = build_meshtastic_interface(
                 self.config.meshtastic_connection_url
             )
-            # Tune socket timeouts to avoid busy-spin reads in meshtastic TCPInterface
-            # when the remote radio is slow or unavailable. The underlying library
-            # leaves the socket non-blocking which can peg a core with _readBytes.
+            # Tune timeouts to avoid busy-spin reads in meshtastic TCPInterface
+            # when the remote radio is slow or unavailable. The library leaves
+            # the socket non-blocking which can peg a core with _readBytes.
             self._tune_interface_socket()
         except MeshtasticTransportError as exc:
             self.logger.error(
@@ -198,11 +198,11 @@ class MeshtasticCommandService:
 
     def _tune_interface_socket(self) -> None:
         """
-        Apply a 1s timeout to the meshtastic TCP socket to prevent busy polling.
+        Apply timeout to the meshtastic TCP socket to prevent busy polling.
 
-        The upstream TCPInterface leaves the socket non-blocking; when the radio
-        is unreachable or slow, _readBytes can spin at high CPU. If the expected
-        attributes are missing we simply skip without failing startup.
+        The upstream TCPInterface leaves the socket non-blocking; when the
+        radio is unreachable or slow, _readBytes can spin at high CPU. If the
+        expected attributes are missing we skip without failing startup.
         """
         try:
             stream = getattr(self._interface, "stream", None)
@@ -212,7 +212,8 @@ class MeshtasticCommandService:
                 sock.setblocking(True)
                 sock.settimeout(5.0)
                 self.logger.info(
-                    "Applied blocking socket with 5s timeout to Meshtastic TCP interface"
+                    "Applied blocking socket with 5s timeout to Meshtastic TCP "
+                    "interface"
                 )
         except Exception:
             self.logger.debug(
