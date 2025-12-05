@@ -171,6 +171,8 @@ class MQTTClient:
 
         self.logger.info("Starting MQTT loop")
         try:
+            # loop_forever() blocks and handles reconnections automatically
+            # If CPU high, consider: loop_start() + while loop with sleep
             self._client.loop_forever(retry_first_connection=True)
         except KeyboardInterrupt:  # pragma: no cover - user interrupt
             self.logger.info("MQTT loop interrupted by user")

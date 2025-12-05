@@ -10,7 +10,7 @@ from typing import Generator
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
-from sqlalchemy.pool import QueuePool
+from sqlalchemy.pool import NullPool, QueuePool
 
 from src.config import get_settings
 
@@ -20,11 +20,14 @@ _IS_SQLITE = settings.database_url.startswith("sqlite")
 
 connect_args = {"check_same_thread": False} if _IS_SQLITE else {}
 
+# Use NullPool for SQLite (no pooling needed), QueuePool for others
+poolclass = NullPool if _IS_SQLITE else QueuePool
+pool_args = {} if _IS_SQLITE else {"pool_size": 5, "max_overflow": 10}
+
 engine: Engine = create_engine(
     settings.database_url,
-    poolclass=QueuePool,
-    pool_size=10,
-    max_overflow=20,
+    poolclass=poolclass,
+    **pool_args,
     future=True,
     echo=settings.api_debug,
     connect_args=connect_args,
