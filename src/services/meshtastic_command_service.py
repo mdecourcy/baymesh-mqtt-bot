@@ -144,8 +144,8 @@ class MeshtasticCommandService:
     def _initialize_listener(self) -> None:
         self._cleanup_interface()
         try:
-            # If using tcp://, probe reachability before building interface to avoid
-            # spinning the underlying meshtastic TCPInterface when the radio is down.
+            # For tcp://, probe reachability before building interface to avoid
+            # spinning the meshtastic TCPInterface when the radio is down.
             self._probe_tcp_endpoint()
             self._interface = build_meshtastic_interface(
                 self.config.meshtastic_connection_url
@@ -225,10 +225,10 @@ class MeshtasticCommandService:
 
     def _probe_tcp_endpoint(self) -> None:
         """
-        Light-weight TCP connectivity probe to avoid busy-spin when radio is down.
+        Light-weight TCP probe to avoid busy-spin when the radio is down.
 
-        For tcp:// endpoints, attempt a short socket connect; if it fails, raise
-        to trigger backoff in the run loop.
+        For tcp:// endpoints, attempt a short socket connect; if it fails,
+        raise to trigger backoff in the run loop.
         """
         if not self.config.meshtastic_connection_url:
             return
