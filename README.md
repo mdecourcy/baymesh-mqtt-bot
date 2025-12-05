@@ -342,6 +342,7 @@ More details in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | MQTT connection fails with SSL error | Set `MQTT_TLS_INSECURE=true` or provide CA cert via `tls_set` |
 | Command bot not responding | Check `MESHTASTIC_CONNECTION_URL` is correct (e.g., `tcp://192.168.1.10:4403`). Verify TCP interface is enabled on device. Check logs for `BrokenPipeError` and reconnection attempts. |
 | Only receiving first chunk of multi-part responses | Device firmware may have issues with rapid messages. Increase delay in `meshtastic_command_service.py` or update device firmware to 2.5.15+. |
+| High CPU with command bot enabled | The Python TCP interface can busy-spin if the CLI binary is missing or unreachable. Install the CLI via `pipx install meshtastic` (Debian PEP 668 friendly), set `MESHTASTIC_CLI_PATH=/root/.local/bin/meshtastic`, and optionally remove `MESHTASTIC_CONNECTION_URL` to force CLI mode. Ensure `/root/.local/bin` is on PATH or set the full CLI path. |
 | Gateway counts seem low | Late arrivals (>10s) are now handled automatically. Check logs for "Added late gateway" messages. |
 | Meshtastic CLI not found | Install CLI: `pip install meshtastic` and set `MESHTASTIC_CLI_PATH` if needed. |
 | Database locked / busy | Ensure only one writer (SQLite limitation). Use Postgres for production. |
