@@ -40,6 +40,21 @@ steps:
     when:
       event: [push, pull_request, tag, manual]
 
+  # Lint & formatting checks (Black + Flake8)
+  - name: lint
+    image: /bin/sh
+    commands:
+      - set -ex
+      - rm -rf .venv || true
+      - python3 -m venv .venv
+      - . .venv/bin/activate
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
+      - black --check src tests
+      - flake8 src tests
+    when:
+      event: [push, pull_request, manual]
+
   # Run tests
   - name: test
     image: /bin/sh
