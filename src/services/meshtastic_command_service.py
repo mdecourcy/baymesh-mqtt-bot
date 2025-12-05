@@ -213,7 +213,7 @@ class MeshtasticCommandService:
                 sock.settimeout(5.0)
                 self.logger.info(
                     "Applied blocking socket with 5s timeout to Meshtastic TCP "
-                    "interface"
+                    "iface"
                 )
         except Exception:
             self.logger.debug(
