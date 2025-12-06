@@ -16,6 +16,11 @@ from src.services.stats_service import StatsService
 from src.services.subscription_service import SubscriptionService
 from src.models import SubscriptionType
 from src.config import get_settings
+from src.database import SessionLocal
+from src.repository.message_repo import MessageRepository
+from src.repository.stats_cache_repo import StatisticsCacheRepository
+from src.repository.subscription_repo import SubscriptionRepository
+from src.repository.user_repo import UserRepository
 
 
 class SchedulerManager:
@@ -136,10 +141,12 @@ class SchedulerManager:
         """
 
         self.logger.info("Starting daily report job at %s", datetime.utcnow())
+        db, stats_service, subscription_service = self._build_fresh_services()
         try:
-            stats = self._stats_service.get_today_stats()
+            stats = stats_service.get_today_stats()
         except Exception:  # pragma: no cover - defensive
             self.logger.error("Failed to compute daily stats", exc_info=True)
+            db.close()
             return
 
         total_sent = 0
@@ -149,10 +156,10 @@ class SchedulerManager:
             SubscriptionType.DAILY_HIGH,
         ):
             try:
-                subscribers = self._subscription_service.get_subscribers_by_type(  # noqa: E501
+                subscribers = subscription_service.get_subscribers_by_type(  # noqa: E501
                     sub_type.value
                 )
-                message = self._subscription_service.format_message_for_subscription(  # noqa: E501
+                message = subscription_service.format_message_for_subscription(  # noqa: E501
                     sub_type.value, stats
                 )
             except Exception:
@@ -190,13 +197,14 @@ class SchedulerManager:
                         )
 
         try:
-            self._stats_service.cache_daily_stats(datetime.utcnow().date())
+            stats_service.cache_daily_stats(datetime.utcnow().date())
         except Exception:
             self.logger.warning("Failed to cache daily stats", exc_info=True)
 
         self.logger.info(
             "Daily report job complete; sent %s messages", total_sent
         )
+        db.close()
 
     def send_daily_broadcast(self) -> None:
         """
@@ -205,12 +213,14 @@ class SchedulerManager:
         """
         self.logger.info("Starting daily broadcast at %s", datetime.utcnow())
 
+        db, stats_service, _ = self._build_fresh_services()
         try:
-            stats = self._stats_service.get_last_24h_stats()
+            stats = stats_service.get_last_24h_stats()
         except Exception:
             self.logger.error(
                 "Failed to compute 24h stats for broadcast", exc_info=True
             )
+            db.close()
             return
 
         # Format the broadcast message
@@ -243,6 +253,7 @@ class SchedulerManager:
                         self._broadcast_channel,
                         attempt,
                     )
+                    db.close()
                     return  # Success, exit early
                 else:
                     self.logger.warning(
@@ -258,6 +269,7 @@ class SchedulerManager:
                     str(e),
                     exc_info=True,
                 )
+        db.close()
 
             # Wait before retrying (unless this was the last attempt)
             if attempt < max_retries:
@@ -416,3 +428,27 @@ class SchedulerManager:
             self.logger.error(
                 "Failed to check router inactivity", exc_info=True
             )
+
+    def _build_fresh_services(
+        self,
+    ) -> tuple[SessionLocal, StatsService, SubscriptionService]:
+        """
+        Create a fresh DB session and service instances for each scheduled job.
+
+        Using a new session per run avoids the "Cannot operate on a closed
+        database" errors seen when reusing long-lived sessions with NullPool.
+        """
+        db = SessionLocal()
+        try:
+            message_repo = MessageRepository(db)
+            stats_cache_repo = StatisticsCacheRepository(db)
+            stats_service = StatsService(message_repo, stats_cache_repo)
+            subscription_repo = SubscriptionRepository(db)
+            user_repo = UserRepository(db)
+            subscription_service = SubscriptionService(
+                subscription_repo, user_repo, stats_service
+            )
+            return db, stats_service, subscription_service
+        except Exception:
+            db.close()
+            raise
