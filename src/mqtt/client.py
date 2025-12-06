@@ -187,8 +187,8 @@ class MQTTClient:
                         rc = self._client.reconnect()
                         if rc == mqtt.MQTT_ERR_SUCCESS:
                             self.logger.info("MQTT reconnect successful")
-                            # Service the socket once to process CONNACK and
-                            # trigger on_connect before the next loop iteration.
+                            # Service socket once to process CONNACK and
+                            # trigger on_connect next loop.
                             try:
                                 self._client.loop(timeout=1.0)
                             except Exception:
