@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { DetailedMessage } from '@/types/message';
 import { Card } from '@/components/common/Card';
 import { Loading } from '@/components/common/Loading';
@@ -141,7 +141,7 @@ export const RecentMessages = ({ messages, loading }: RecentMessagesProps) => {
                       <div className="text-xs font-semibold text-slate-500 uppercase mb-2">
                         Gateways ({msg.gateways.length})
                       </div>
-                      {useMemo(() => {
+                      {(() => {
                         const buckets: Record<string, typeof msg.gateways> = {};
                         msg.gateways.forEach((gw) => {
                           const hopKey =
@@ -203,7 +203,7 @@ export const RecentMessages = ({ messages, loading }: RecentMessagesProps) => {
                             ))}
                           </div>
                         );
-                      }, [msg.gateways, timezone])}
+                      })()}
                     </div>
 
                     {/* Message ID */}
