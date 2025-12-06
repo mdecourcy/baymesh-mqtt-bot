@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { DetailedMessage } from '@/types/message';
 import { Card } from '@/components/common/Card';
 import { Loading } from '@/components/common/Loading';
@@ -136,44 +136,74 @@ export const RecentMessages = ({ messages, loading }: RecentMessagesProps) => {
                       </div>
                     )}
 
-                    {/* Gateway list */}
+                    {/* Gateway list grouped by hops travelled */}
                     <div>
                       <div className="text-xs font-semibold text-slate-500 uppercase mb-2">
                         Gateways ({msg.gateways.length})
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {msg.gateways.map((gw, idx) => (
-                          <div
-                            key={`${gw.gateway_id}-${idx}`}
-                            className="bg-white dark:bg-slate-900 p-3 rounded border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
-                          >
-                            {gw.gateway_name ? (
-                              <>
-                                <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                                  {gw.gateway_name}
+                      {useMemo(() => {
+                        const buckets: Record<string, typeof msg.gateways> = {};
+                        msg.gateways.forEach((gw) => {
+                          const hopKey =
+                            gw.hops_travelled ??
+                            gw.hop_limit_at_receipt ??
+                            -1;
+                          const key = String(hopKey);
+                          if (!buckets[key]) buckets[key] = [];
+                          buckets[key].push(gw);
+                        });
+
+                        const sortedKeys = Object.keys(buckets)
+                          .map((k) => Number(k))
+                          .sort((a, b) => a - b);
+
+                        return (
+                          <div className="space-y-3">
+                            {sortedKeys.map((hopVal) => (
+                              <div key={hopVal} className="space-y-2">
+                                <div className="text-xs font-semibold text-slate-500">
+                                  {hopVal >= 0
+                                    ? `Hops travelled: ${hopVal}`
+                                    : 'Hops travelled: unknown'}
                                 </div>
-                                <div className="font-mono text-xs text-blue-600 dark:text-blue-400">
-                                  {gw.gateway_id}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                  {buckets[String(hopVal)].map((gw, idx) => (
+                                    <div
+                                      key={`${gw.gateway_id}-${idx}`}
+                                      className="bg-white dark:bg-slate-900 p-3 rounded border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                                    >
+                                      {gw.gateway_name ? (
+                                        <>
+                                          <div className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                                            {gw.gateway_name}
+                                          </div>
+                                          <div className="font-mono text-xs text-blue-600 dark:text-blue-400">
+                                            {gw.gateway_id}
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
+                                          {gw.gateway_id}
+                                        </div>
+                                      )}
+                                      <div className="text-xs text-slate-500 mt-1">
+                                        {formatDateTime(gw.created_at, timezone)}
+                                      </div>
+                                      {(gw.hops_travelled !== undefined ||
+                                        gw.hop_limit_at_receipt !== undefined) && (
+                                        <div className="text-xs text-slate-500 mt-1">
+                                          Hops: {gw.hops_travelled ?? '—'} / Hop limit:{' '}
+                                          {gw.hop_limit_at_receipt ?? '—'}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                              </>
-                            ) : (
-                              <div className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
-                                {gw.gateway_id}
                               </div>
-                            )}
-                            <div className="text-xs text-slate-500 mt-1">
-                              {formatDateTime(gw.created_at, timezone)}
-                            </div>
-                            {(gw.hops_travelled !== undefined ||
-                              gw.hop_limit_at_receipt !== undefined) && (
-                              <div className="text-xs text-slate-500 mt-1">
-                                Hops: {gw.hops_travelled ?? '—'} / Hop limit:{' '}
-                                {gw.hop_limit_at_receipt ?? '—'}
-                              </div>
-                            )}
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        );
+                      }, [msg.gateways, timezone])}
                     </div>
 
                     {/* Message ID */}
