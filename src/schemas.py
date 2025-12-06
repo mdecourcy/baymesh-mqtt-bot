@@ -31,6 +31,8 @@ class MockMessageRequest(APIModel):
     timestamp: datetime
     message_id: Optional[str] = None
     gateway_ids: Optional[List[str]] = None
+    hop_start: Optional[int] = Field(default=None, ge=0)
+    hop_limit: Optional[int] = Field(default=None, ge=0)
 
 
 class CreateUserRequest(APIModel):
@@ -46,6 +48,9 @@ class MessageResponse(APIModel):
     sender_name: str
     sender_user_id: Optional[int] = None
     gateway_count: int
+    hop_start: Optional[int] = None
+    hop_limit: Optional[int] = None
+    hops_travelled: Optional[int] = None
     timestamp: datetime
 
 
@@ -77,6 +82,9 @@ class DetailedMessageResponse(APIModel):
     sender_name: str
     sender_user_id: Optional[int] = None
     gateway_count: int
+    hop_start: Optional[int] = None
+    hop_limit: Optional[int] = None
+    hops_travelled: Optional[int] = None
     timestamp: datetime
     rssi: Optional[int] = None
     snr: Optional[float] = None

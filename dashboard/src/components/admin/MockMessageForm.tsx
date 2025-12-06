@@ -8,6 +8,8 @@ export const MockMessageForm = () => {
     sender_id: '',
     sender_name: '',
     gateway_count: 3,
+    hop_start: '',
+    hop_limit: '',
     rssi: -100,
     snr: 5,
     payload: 'Test message',
@@ -25,6 +27,8 @@ export const MockMessageForm = () => {
         sender_id: Number(form.sender_id),
         sender_name: form.sender_name,
         gateway_count: Number(form.gateway_count),
+        hop_start: form.hop_start ? Number(form.hop_start) : undefined,
+        hop_limit: form.hop_limit ? Number(form.hop_limit) : undefined,
         rssi: Number(form.rssi),
         snr: Number(form.snr),
         payload: form.payload,
@@ -53,6 +57,14 @@ export const MockMessageForm = () => {
         <div>
           <label className="text-sm text-slate-500">Gateway count</label>
           <input type="number" value={form.gateway_count} onChange={(e) => updateField('gateway_count', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 dark:bg-slate-900" />
+        </div>
+        <div>
+          <label className="text-sm text-slate-500">Hop start</label>
+          <input type="number" value={form.hop_start} onChange={(e) => updateField('hop_start', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 dark:bg-slate-900" />
+        </div>
+        <div>
+          <label className="text-sm text-slate-500">Hop limit</label>
+          <input type="number" value={form.hop_limit} onChange={(e) => updateField('hop_limit', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 p-2 dark:bg-slate-900" />
         </div>
         <div>
           <label className="text-sm text-slate-500">RSSI</label>

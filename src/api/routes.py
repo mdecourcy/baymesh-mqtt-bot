@@ -169,6 +169,14 @@ def get_detailed_messages(
         # Use current username from User table, fallback to stored name
         sender_name = msg.sender.username if msg.sender else msg.sender_name
 
+        hop_start = getattr(msg, "hop_start", None)
+        hop_limit = getattr(msg, "hop_limit", None)
+        hops_travelled = (
+            max(0, hop_start - hop_limit)
+            if hop_start is not None and hop_limit is not None
+            else None
+        )
+
         result.append(
             DetailedMessageResponse(
                 id=msg.id,
@@ -176,6 +184,9 @@ def get_detailed_messages(
                 sender_name=sender_name,
                 sender_user_id=msg.sender.user_id if msg.sender else None,
                 gateway_count=msg.gateway_count,
+                hop_start=hop_start,
+                hop_limit=hop_limit,
+                hops_travelled=hops_travelled,
                 timestamp=msg.timestamp,
                 rssi=msg.rssi,
                 snr=msg.snr,
@@ -599,6 +610,8 @@ def create_mock_message(
         sender_id=user.id,
         sender_name=payload.sender_name,
         timestamp=payload.timestamp.replace(tzinfo=None),
+        hop_start=payload.hop_start,
+        hop_limit=payload.hop_limit,
         gateway_count=calculated_count,
         rssi=payload.rssi,
         snr=payload.snr,

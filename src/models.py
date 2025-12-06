@@ -90,6 +90,8 @@ class Message(Base):
     )
     sender_name: Mapped[str] = mapped_column(String(255), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    hop_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hop_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     gateway_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1
     )

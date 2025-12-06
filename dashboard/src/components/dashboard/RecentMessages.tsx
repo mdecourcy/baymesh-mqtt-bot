@@ -75,13 +75,17 @@ export const RecentMessages = ({ messages, loading }: RecentMessagesProps) => {
                       {msg.gateway_count} GW
                     </div>
 
-                    {/* RSSI & SNR */}
+                    {/* RSSI, SNR, Hops */}
                     <div className="hidden sm:flex gap-4 text-sm text-slate-600 dark:text-slate-400">
                       <div>
                         <span className="text-xs text-slate-500">RSSI:</span> {msg.rssi ?? '—'}
                       </div>
                       <div>
                         <span className="text-xs text-slate-500">SNR:</span> {msg.snr ?? '—'}
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-500">Hops:</span>{' '}
+                        {msg.hops_travelled ?? '—'}
                       </div>
                     </div>
 
@@ -110,6 +114,24 @@ export const RecentMessages = ({ messages, loading }: RecentMessagesProps) => {
                           <div className="text-sm text-slate-900 dark:text-white whitespace-pre-wrap break-words">
                             {msg.payload}
                           </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hop metadata */}
+                    {(msg.hop_start !== undefined || msg.hop_limit !== undefined || msg.hops_travelled !== undefined) && (
+                      <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-700 dark:text-slate-300">
+                        <div>
+                          <div className="text-xs uppercase text-slate-500">Hop start</div>
+                          <div className="font-medium">{msg.hop_start ?? '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase text-slate-500">Hop limit (at receipt)</div>
+                          <div className="font-medium">{msg.hop_limit ?? '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase text-slate-500">Hops travelled</div>
+                          <div className="font-medium">{msg.hops_travelled ?? '—'}</div>
                         </div>
                       </div>
                     )}

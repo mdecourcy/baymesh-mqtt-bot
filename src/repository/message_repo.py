@@ -37,6 +37,8 @@ class MessageRepository(BaseRepository):
         payload: Optional[str],
         *,
         gateway_id: Optional[str] = None,
+        hop_start: Optional[int] = None,
+        hop_limit: Optional[int] = None,
     ) -> Message:
         """Persist a new message."""
 
@@ -50,6 +52,8 @@ class MessageRepository(BaseRepository):
                 sender_id=sender_id,
                 sender_name=sender_name,
                 timestamp=timestamp,
+                hop_start=hop_start,
+                hop_limit=hop_limit,
                 gateway_count=initial_gateway_count,
                 rssi=rssi,
                 snr=snr,

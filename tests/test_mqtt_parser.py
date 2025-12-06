@@ -55,6 +55,8 @@ def test_parser_handles_plain_service_envelope():
     assert parsed["payload_content"] == "hello mesh"
     assert parsed["channel_id"] == "MediumFast"
     assert parsed["gateway_id"] == "!00112233"
+    assert parsed["hop_start"] == 3
+    assert parsed["hop_limit"] == 3
 
 
 def test_parser_decrypts_encrypted_packet_with_default_key():

@@ -533,6 +533,8 @@ class MQTTClient:
                 sender_id=user.id,
                 sender_name=sender_name or user.username,
                 timestamp=timestamp_dt,
+                hop_start=first_env.get("hop_start"),
+                hop_limit=first_env.get("hop_limit"),
                 gateway_count=0,  # Will be updated as we add gateways
                 rssi=first_env.get("rssi"),
                 snr=first_env.get("snr"),

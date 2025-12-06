@@ -478,6 +478,9 @@ class StatsService:
             "timestamp": self._as_aware(message.timestamp),
             "sender_name": sender_username or message.sender_name,
             "sender_user_id": sender_user_id,
+            "hop_start": getattr(message, "hop_start", None),
+            "hop_limit": getattr(message, "hop_limit", None),
+            "hops_travelled": self._calculate_hops_travelled(message),
         }
 
     def _metric_expression(self, metric: MetricType):
@@ -488,6 +491,17 @@ class StatsService:
         if metric == MetricType.DAILY_LOW:
             return func.min(Message.gateway_count)
         raise StatisticsError(f"Unsupported metric type {metric}")
+
+    @staticmethod
+    def _calculate_hops_travelled(message: Message) -> Optional[int]:
+        hop_start = getattr(message, "hop_start", None)
+        hop_limit = getattr(message, "hop_limit", None)
+        if hop_start is None or hop_limit is None:
+            return None
+        try:
+            return max(0, int(hop_start) - int(hop_limit))
+        except Exception:
+            return None
 
     def _as_aware(self, dt: Optional[datetime]) -> Optional[datetime]:
         if dt is None:

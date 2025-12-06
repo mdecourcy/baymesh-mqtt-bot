@@ -93,6 +93,13 @@ steps:
         set -ex
         cd /opt/baymesh-mqtt-bot
         git pull --ff-only
+        # Ensure Python deps are current for migrations
+        python3 -m venv .venv
+        . .venv/bin/activate
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        # Run database migrations
+        alembic upgrade head
         # Ensure Node.js tooling is available for dashboard build
         command -v npm >/dev/null 2>&1 || (apt-get update && apt-get install -y nodejs npm)
         cd dashboard

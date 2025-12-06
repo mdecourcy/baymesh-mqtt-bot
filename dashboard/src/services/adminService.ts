@@ -5,6 +5,8 @@ interface MockMessagePayload {
   sender_id: number;
   sender_name: string;
   gateway_count: number;
+  hop_start?: number | null;
+  hop_limit?: number | null;
   rssi: number;
   snr: number;
   payload?: string;

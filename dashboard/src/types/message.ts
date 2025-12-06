@@ -5,6 +5,9 @@ export interface Message {
   sender_name: string;
   sender_user_id?: number | null;
   gateway_count: number;
+  hop_start?: number | null;
+  hop_limit?: number | null;
+  hops_travelled?: number | null;
   rssi?: number | null;
   snr?: number | null;
   timestamp: string;

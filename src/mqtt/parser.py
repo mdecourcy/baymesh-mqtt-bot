@@ -215,6 +215,16 @@ class ProtobufMessageParser:
             return None
 
         portnum_name = self._get_portnum_name(decoded)
+        hop_start = getattr(packet, "hop_start", None)
+        hop_limit = getattr(packet, "hop_limit", None)
+        try:
+            hop_start = int(hop_start) if hop_start is not None else None
+        except Exception:
+            hop_start = None
+        try:
+            hop_limit = int(hop_limit) if hop_limit is not None else None
+        except Exception:
+            hop_limit = None
 
         # Respect nodes that have "OK to MQTT" disabled by dropping their
         # text messages before they enter our stats/command pipeline.
@@ -254,6 +264,8 @@ class ProtobufMessageParser:
             "role": role,
             "to": self._get_to_value(packet),
             "timestamp": timestamp,
+            "hop_start": hop_start,
+            "hop_limit": hop_limit,
             "gateway_count": 1,
             "rssi": getattr(packet, "rx_rssi", None),
             "snr": getattr(packet, "rx_snr", None),
@@ -290,6 +302,16 @@ class ProtobufMessageParser:
 
         decoded = getattr(message, "decoded", None)
         portnum_name = self._get_portnum_name(decoded)
+        hop_start = getattr(message, "hop_start", None)
+        hop_limit = getattr(message, "hop_limit", None)
+        try:
+            hop_start = int(hop_start) if hop_start is not None else None
+        except Exception:
+            hop_start = None
+        try:
+            hop_limit = int(hop_limit) if hop_limit is not None else None
+        except Exception:
+            hop_limit = None
 
         # Apply the same ok_to_mqtt gating for legacy Data payloads, in case
         # they are published directly without a ServiceEnvelope wrapper.
@@ -327,6 +349,8 @@ class ProtobufMessageParser:
             "role": role,
             "to": self._get_to_value(message),
             "timestamp": timestamp,
+            "hop_start": hop_start,
+            "hop_limit": hop_limit,
             "gateway_count": gateway_count,
             "rssi": rssi,
             "snr": snr,
