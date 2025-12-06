@@ -678,16 +678,43 @@ def get_health() -> HealthResponse:
         "reconnects": mqtt_client.reconnect_count if mqtt_client else 0,
     }
 
+    # Command listener status (serial/tcp)
+    command_manager = getattr(app.state, "command_manager", None)
+    command_snapshot = (
+        command_manager.get_health_snapshot() if command_manager else None
+    )
+    if command_snapshot:
+        if not command_snapshot.get("enabled"):
+            command_status = "disabled"
+        elif command_snapshot.get("running") and command_snapshot.get(
+            "interface_open"
+        ):
+            command_status = "ok"
+        else:
+            command_status = "warning"
+    else:
+        command_status = "unknown"
+        command_snapshot = {}
+
     overall = "ok"
     if db_status != "ok" or mqtt_status != "ok":
         overall = "critical" if db_status == "critical" else "warning"
+    if command_status not in ("ok", "disabled", "unknown"):
+        overall = "warning"
 
     response = HealthResponse(
         status=overall,
         database=db_status,
         mqtt=mqtt_status,
         timestamp=datetime.utcnow(),
-        details={"mqtt": mqtt_details, "database": {"latency_ms": "< 1"}},
+        details={
+            "mqtt": mqtt_details,
+            "database": {"latency_ms": "< 1"},
+            "command_listener": {
+                "status": command_status,
+                **command_snapshot,
+            },
+        },
     )
     logger.info("Health check: %s", response.model_dump())
     return response

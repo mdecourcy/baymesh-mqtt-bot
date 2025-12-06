@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 import threading
 import time
+from datetime import datetime
 from collections import defaultdict
 from typing import Any, Dict, Optional
 
@@ -67,6 +68,8 @@ class MeshtasticCommandService:
         self._disconnect_registered = False
         self._reconnect_event = threading.Event()
         self._last_error: Optional[str] = None
+        self._last_error_at: Optional[datetime] = None
+        self._last_started_at: Optional[datetime] = None
         self._restart_count: int = 0
 
         # Rate limiting configuration
@@ -112,6 +115,35 @@ class MeshtasticCommandService:
         self.logger.info("Meshtastic command service stopped")
 
     # ------------------------------------------------------------------ #
+    # Health snapshot
+    # ------------------------------------------------------------------ #
+    def get_health_snapshot(self) -> Dict[str, Any]:
+        """
+        Return lightweight health info without touching the radio.
+        """
+
+        connection_url = self.config.meshtastic_connection_url
+        connection_type = None
+        if connection_url:
+            if connection_url.startswith("serial://"):
+                connection_type = "serial"
+            elif connection_url.startswith("tcp://"):
+                connection_type = "tcp"
+
+        return {
+            "enabled": self.config.meshtastic_commands_enabled,
+            "running": self._running,
+            "subscribed": self._subscribed,
+            "interface_open": self._interface is not None,
+            "connection_url": connection_url,
+            "connection_type": connection_type,
+            "last_started_at": self._last_started_at,
+            "last_error": self._last_error,
+            "last_error_at": self._last_error_at,
+            "restart_count": self._restart_count,
+        }
+
+    # ------------------------------------------------------------------ #
     # Internal
     # ------------------------------------------------------------------ #
     def _run(self) -> None:
@@ -127,6 +159,7 @@ class MeshtasticCommandService:
                     pass
             except Exception as exc:  # pragma: no cover - hardware dependent
                 self._last_error = str(exc)
+                self._last_error_at = datetime.utcnow()
                 self._restart_count += 1
                 self.logger.error(
                     "Failed to start Meshtastic command listener (attempt %s): %s",  # noqa: E501
@@ -169,6 +202,8 @@ class MeshtasticCommandService:
             self._disconnect_registered = True
         self._subscribed = True
         self._last_error = None
+        self._last_error_at = None
+        self._last_started_at = datetime.utcnow()
         self.logger.info("Meshtastic command listener started")
 
     def _cleanup_interface(self) -> None:
