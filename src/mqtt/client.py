@@ -187,6 +187,15 @@ class MQTTClient:
                         rc = self._client.reconnect()
                         if rc == mqtt.MQTT_ERR_SUCCESS:
                             self.logger.info("MQTT reconnect successful")
+                            # Service the socket once to process CONNACK and
+                            # trigger on_connect before the next loop iteration.
+                            try:
+                                self._client.loop(timeout=1.0)
+                            except Exception:
+                                self.logger.debug(
+                                    "Error running post-reconnect loop",
+                                    exc_info=True,
+                                )
                             reconnect_delay = 1
                             time.sleep(0.1)
                             continue

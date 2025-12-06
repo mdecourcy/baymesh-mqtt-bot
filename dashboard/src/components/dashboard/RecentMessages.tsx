@@ -162,7 +162,9 @@ export const RecentMessages = ({ messages, loading }: RecentMessagesProps) => {
                             {sortedKeys.map((hopVal) => (
                               <div key={hopVal} className="space-y-2">
                                 <div className="text-xs font-semibold text-slate-500">
-                                  {hopVal >= 0
+                                  {hopVal === 0
+                                    ? 'Direct'
+                                    : hopVal > 0
                                     ? `Hops travelled: ${hopVal}`
                                     : 'Hops travelled: unknown'}
                                 </div>
