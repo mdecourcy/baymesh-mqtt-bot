@@ -274,7 +274,10 @@ class MessageRepository(BaseRepository):
             self._handle_exception("delete message", exc)
 
     def add_gateway(
-        self, message: Message, gateway_id: str
+        self,
+        message: Message,
+        gateway_id: str,
+        hop_limit_at_receipt: Optional[int] = None,
     ) -> Optional[MessageGateway]:
         """Record an individual gateway relay for a message."""
 
@@ -293,7 +296,12 @@ class MessageRepository(BaseRepository):
                 return existing
 
             record = MessageGateway(
-                message_id=message.id, gateway_id=gateway_id
+                message_id=message.id,
+                gateway_id=gateway_id,
+                hop_limit_at_receipt=hop_limit_at_receipt,
+                hops_travelled=self._calc_hops_travelled(
+                    message, hop_limit_at_receipt
+                ),
             )
             self.session.add(record)
             self.session.flush()
@@ -317,6 +325,18 @@ class MessageRepository(BaseRepository):
             ).scalar_one_or_none()
         except Exception as exc:
             self._handle_exception("add gateway", exc)
+
+    @staticmethod
+    def _calc_hops_travelled(
+        message: Message, hop_limit_at_receipt: Optional[int]
+    ) -> Optional[int]:
+        hop_start = getattr(message, "hop_start", None)
+        if hop_start is None or hop_limit_at_receipt is None:
+            return None
+        try:
+            return max(0, int(hop_start) - int(hop_limit_at_receipt))
+        except Exception:
+            return None
 
     def get_inactive_routers(
         self, threshold_minutes: int

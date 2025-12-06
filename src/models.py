@@ -132,6 +132,10 @@ class MessageGateway(Base):
         nullable=False,
     )
     gateway_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    hop_limit_at_receipt: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    hops_travelled: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, nullable=False
     )

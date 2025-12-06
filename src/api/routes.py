@@ -163,6 +163,10 @@ def get_detailed_messages(
                     gateway_id=gw.gateway_id,
                     gateway_name=gateway_name,
                     created_at=gw.created_at,
+                    hop_limit_at_receipt=getattr(
+                        gw, "hop_limit_at_receipt", None
+                    ),
+                    hops_travelled=getattr(gw, "hops_travelled", None),
                 )
             )
 

@@ -43,6 +43,24 @@ class PacketGroup:
         """Return count of unique gateways."""
         return len(self.unique_gateway_ids())
 
+    def gateway_receipts(self) -> List[Dict[str, Any]]:
+        """
+        Return unique gateways with hop metadata captured at receipt.
+        """
+        receipts: dict[str, Dict[str, Any]] = {}
+        for env in self.envelopes:
+            gw_id = env.get("gateway_id")
+            if not gw_id:
+                continue
+            # Keep the first-seen envelope per gateway to mirror Discord logger
+            if gw_id not in receipts:
+                receipts[gw_id] = {
+                    "gateway_id": gw_id,
+                    "hop_limit": env.get("hop_limit"),
+                    "hop_start": env.get("hop_start"),
+                }
+        return list(receipts.values())
+
 
 class MeshPacketQueue:
     """

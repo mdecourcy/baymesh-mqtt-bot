@@ -164,6 +164,13 @@ export const RecentMessages = ({ messages, loading }: RecentMessagesProps) => {
                             <div className="text-xs text-slate-500 mt-1">
                               {formatDateTime(gw.created_at, timezone)}
                             </div>
+                            {(gw.hops_travelled !== undefined ||
+                              gw.hop_limit_at_receipt !== undefined) && (
+                              <div className="text-xs text-slate-500 mt-1">
+                                Hops: {gw.hops_travelled ?? '—'} / Hop limit:{' '}
+                                {gw.hop_limit_at_receipt ?? '—'}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

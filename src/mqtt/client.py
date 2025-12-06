@@ -366,6 +366,7 @@ class MQTTClient:
         try:
             message_id = str(parsed.get("message_id"))
             gateway_id = parsed.get("gateway_id")
+            hop_limit = parsed.get("hop_limit")
 
             if not message_id or not gateway_id:
                 return
@@ -381,7 +382,9 @@ class MQTTClient:
                 return
 
             # Add the gateway
-            self._message_repo.add_gateway(message, gateway_id)
+            self._message_repo.add_gateway(
+                message, gateway_id, hop_limit_at_receipt=hop_limit
+            )
             self.logger.info(
                 "Added late gateway %s to message %s (now %d gateways)",
                 gateway_id,
@@ -543,10 +546,15 @@ class MQTTClient:
             )
 
             # Add all unique gateways from the group
-            unique_gateways = group.unique_gateway_ids()
-            for gateway_id in unique_gateways:
+            for receipt in group.gateway_receipts():
+                gateway_id = receipt.get("gateway_id")
+                hop_limit = receipt.get("hop_limit")
                 try:
-                    self._message_repo.add_gateway(message, gateway_id)
+                    self._message_repo.add_gateway(
+                        message,
+                        gateway_id,
+                        hop_limit_at_receipt=hop_limit,
+                    )
                 except Exception:
                     # Gateway already exists, continue
                     pass

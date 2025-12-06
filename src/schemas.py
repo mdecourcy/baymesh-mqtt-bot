@@ -58,6 +58,8 @@ class GatewayInfo(APIModel):
     gateway_id: str
     gateway_name: Optional[str] = None
     created_at: datetime
+    hop_limit_at_receipt: Optional[int] = None
+    hops_travelled: Optional[int] = None
 
 
 class GatewayHistoryResponse(APIModel):

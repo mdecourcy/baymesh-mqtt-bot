@@ -17,6 +17,8 @@ export interface GatewayInfo {
   gateway_id: string;
   gateway_name?: string | null;
   created_at: string;
+  hop_limit_at_receipt?: number | null;
+  hops_travelled?: number | null;
 }
 
 export interface GatewayHistory {
