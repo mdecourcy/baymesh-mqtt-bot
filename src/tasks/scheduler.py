@@ -156,8 +156,10 @@ class SchedulerManager:
             SubscriptionType.DAILY_HIGH,
         ):
             try:
-                subscribers = subscription_service.get_subscribers_by_type(  # noqa: E501
-                    sub_type.value
+                subscribers = (
+                    subscription_service.get_subscribers_by_type(  # noqa: E501
+                        sub_type.value
+                    )
                 )
                 message = subscription_service.format_message_for_subscription(  # noqa: E501
                     sub_type.value, stats
@@ -269,8 +271,6 @@ class SchedulerManager:
                     str(e),
                     exc_info=True,
                 )
-        db.close()
-
             # Wait before retrying (unless this was the last attempt)
             if attempt < max_retries:
                 self.logger.info(
@@ -285,6 +285,8 @@ class SchedulerManager:
             max_retries,
             self._broadcast_channel,
         )
+
+        db.close()
 
     def _format_broadcast_message(self, stats: dict) -> str:
         """Format daily stats into a broadcast message."""

@@ -92,6 +92,8 @@ class MQTTClient:
             if result != mqtt.MQTT_ERR_SUCCESS:
                 self.logger.error("MQTT connect failed with code %s", result)
                 return False
+            # Mark as connected until callbacks confirm
+            self._connected = True
             return True
         except Exception as exc:
             self.logger.error(
@@ -170,10 +172,37 @@ class MQTTClient:
         self.logger.info("Packet processing thread started")
 
         self.logger.info("Starting MQTT loop")
+        reconnect_delay = 1
+        max_reconnect_delay = 60
         try:
             # Manual loop with throttling to prevent CPU-intensive polling
             # Default paho-mqtt loops poll with 0.01s timeout = 100 calls/sec
             while self._running:
+                if not self._connected:
+                    try:
+                        self.logger.warning(
+                            "MQTT disconnected; attempting reconnect in %ss",
+                            reconnect_delay,
+                        )
+                        rc = self._client.reconnect()
+                        if rc == mqtt.MQTT_ERR_SUCCESS:
+                            self.logger.info("MQTT reconnect successful")
+                            reconnect_delay = 1
+                            time.sleep(0.1)
+                            continue
+                        self.logger.warning(
+                            "MQTT reconnect failed with code %s", rc
+                        )
+                    except Exception:
+                        self.logger.error(
+                            "MQTT reconnect attempt raised", exc_info=True
+                        )
+                    time.sleep(reconnect_delay)
+                    reconnect_delay = min(
+                        reconnect_delay * 2, max_reconnect_delay
+                    )
+                    continue
+
                 # Process network events (non-blocking)
                 rc = self._client.loop_read()
                 if rc != mqtt.MQTT_ERR_SUCCESS:
@@ -183,7 +212,17 @@ class MQTTClient:
                     self.logger.debug("loop_write error: %s", rc)
                 rc = self._client.loop_misc()
                 if rc != mqtt.MQTT_ERR_SUCCESS:
-                    self.logger.warning("loop_misc error: %s", rc)
+                    # rc 4 = MQTT_ERR_CONN_LOST, rc 7 = MQTT_ERR_NO_CONN
+                    if rc in (
+                        mqtt.MQTT_ERR_CONN_LOST,
+                        mqtt.MQTT_ERR_NO_CONN,
+                    ):
+                        self.logger.warning(
+                            "MQTT connection lost (rc=%s); will reconnect", rc
+                        )
+                        self._connected = False
+                    else:
+                        self.logger.warning("loop_misc error: %s", rc)
                 # Sleep to limit polling to ~10 times/sec
                 time.sleep(0.1)
         except KeyboardInterrupt:  # pragma: no cover - user interrupt
