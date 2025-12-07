@@ -14,6 +14,7 @@ from uuid import uuid4
 import paho.mqtt.client as mqtt
 
 from src.config import get_settings, Settings
+from src.database import SessionLocal
 from src.exceptions import MQTTConnectionError
 from src.logger import get_logger
 from src.mqtt.parser import ProtobufMessageParser
@@ -41,6 +42,7 @@ class MQTTClient:
         self.logger = get_logger(self.__class__.__name__)
         self._message_repo = message_repo
         self._user_repo = user_repo
+        self._session_factory = SessionLocal
         self._parser = ProtobufMessageParser(
             decryption_keys=self.config.meshtastic_decryption_keys,
             include_default_key=self.config.meshtastic_include_default_key,
@@ -372,7 +374,9 @@ class MQTTClient:
         This happens when a gateway forwards a message more than 10 seconds after  # noqa: E501
         the first gateway relay. We add it directly to the existing message record.  # noqa: E501
         """
+        session = self._session_factory()
         try:
+            message_repo = MessageRepository(session)
             message_id = str(parsed.get("message_id"))
             gateway_id = parsed.get("gateway_id")
             hop_limit = parsed.get("hop_limit")
@@ -381,7 +385,7 @@ class MQTTClient:
                 return
 
             # Find the existing message
-            message = self._message_repo.get_by_message_id(message_id)
+            message = message_repo.get_by_message_id(message_id)
             if not message:
                 self.logger.warning(
                     "Late gateway %s for unknown message %s",
@@ -391,9 +395,10 @@ class MQTTClient:
                 return
 
             # Add the gateway
-            self._message_repo.add_gateway(
+            message_repo.add_gateway(
                 message, gateway_id, hop_limit_at_receipt=hop_limit
             )
+            session.commit()
             self.logger.info(
                 "Added late gateway %s to message %s (now %d gateways)",
                 gateway_id,
@@ -402,7 +407,10 @@ class MQTTClient:
             )
 
         except Exception:
+            session.rollback()
             self.logger.error("Failed to handle late gateway", exc_info=True)
+        finally:
+            session.close()
 
     def _process_nodeinfo(self, parsed: dict) -> None:
         """
