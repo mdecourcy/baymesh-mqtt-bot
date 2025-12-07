@@ -120,3 +120,7 @@ def metrics_response() -> Response:
     return Response(
         content=generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST
     )
+
+
+# Seed gauges once at import so CPU/mem metrics exist even before requests
+update_process_metrics()
