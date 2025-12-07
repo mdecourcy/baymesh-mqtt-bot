@@ -109,6 +109,4 @@ def metrics_response() -> Response:
     """Return the current metrics in Prometheus exposition format."""
 
     update_process_metrics()
-    return Response(
-        content=generate_latest(), media_type=CONTENT_TYPE_LATEST
-    )
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
