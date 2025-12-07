@@ -19,6 +19,7 @@ docker compose -f docker-compose.observability.yml up -d
 
 Prometheus: http://localhost:9090  
 Grafana: http://localhost:3000 (admin / admin)
+Loki (logs backend): http://localhost:3100
 
 ### Prometheus target
 
@@ -26,6 +27,15 @@ Grafana: http://localhost:3000 (admin / admin)
 - If Prometheus runs in Docker, ensure `host.docker.internal` (or host IP)
   resolves inside the container—`extra_hosts: ["host.docker.internal:host-gateway"]`
   is already set in the compose file.
+
+### Logs ingestion (systemd journal)
+
+- Promtail scrapes the host systemd journal and ships to Loki.
+- Ensure the journal is available at `/var/log/journal` (persistent journal).
+- Loki is provisioned as a Grafana data source.
+- Query in Grafana Explore:
+  - `{job="systemd-journal", systemd_unit="meshtastic-stats-bot.service"}`
+  - Add filters for `host` as needed.
 
 ### Grafana setup
 
