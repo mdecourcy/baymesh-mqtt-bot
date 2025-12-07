@@ -9,11 +9,12 @@ import uuid
 from pathlib import Path
 from typing import Callable
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from src import metrics
 from src.exceptions import (
     DatabaseError,
     MeshtasticCommandError,
@@ -61,17 +62,39 @@ async def request_context_middleware(request: Request, call_next: Callable):
     request.state.request_id = request_id
     start_time = time.time()
     logger.info("REQ %s %s %s", request_id, request.method, request.url.path)
-    response = await call_next(request)
-    duration_ms = (time.time() - start_time) * 1000
-    response.headers["X-Request-ID"] = request_id
-    logger.info(
-        "RES %s %s %s %.2fms",
-        request_id,
-        response.status_code,
-        request.url.path,
-        duration_ms,
-    )
-    return response
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    except Exception:
+        metrics.record_exception()
+        raise
+    finally:
+        duration_ms = (time.time() - start_time) * 1000
+        duration_s = duration_ms / 1000
+        path_template = request.url.path
+        route = request.scope.get("route")
+        if route and getattr(route, "path", None):
+            path_template = route.path
+        metrics.record_request(
+            request.method, path_template, status_code, duration_s
+        )
+        metrics.update_process_metrics()
+        if "response" in locals():
+            response.headers["X-Request-ID"] = request_id
+        logger.info(
+            "RES %s %s %s %.2fms",
+            request_id,
+            status_code,
+            path_template,
+            duration_ms,
+        )
+
+
+@app.get("/metrics")
+async def metrics_endpoint() -> Response:
+    return metrics.metrics_response()
 
 
 def _error_response(status_code: int, error: str, detail: str) -> JSONResponse:
