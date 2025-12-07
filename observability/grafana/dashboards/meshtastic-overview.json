@@ -447,11 +447,11 @@
       },
       "targets": [
         {
-          "expr": "{job=\"systemd-journal\"}",
+          "expr": "{job=\"systemd-journal\"} !~ \"/health\" !~ \"/metrics\"",
           "refId": "A"
         }
       ],
-      "title": "Service Logs (Loki: journald)",
+      "title": "Service Logs (Loki: journald, filtered)",
       "type": "logs"
     }
   ],

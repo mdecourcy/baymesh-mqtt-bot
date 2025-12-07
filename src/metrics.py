@@ -5,6 +5,7 @@ Prometheus metrics helpers.
 from __future__ import annotations
 
 import os
+import time
 
 from fastapi import Response
 from prometheus_client import (
@@ -23,6 +24,8 @@ except Exception:  # pragma: no cover - optional dependency
 
 PID = os.getpid()
 REGISTRY = CollectorRegistry()
+_LAST_CPU_TIMES = None
+_LAST_CPU_CHECK_TS = None
 
 REQUESTS = Counter(
     "http_requests_total",
@@ -106,9 +109,28 @@ def update_process_metrics() -> None:
         return
     try:
         proc = psutil.Process(PID)
-        # First call to cpu_percent returns 0; use a small interval to get
-        # a real reading.
-        PROCESS_CPU_PERCENT.labels(pid=PID).set(proc.cpu_percent(interval=0.1))
+        global _LAST_CPU_TIMES, _LAST_CPU_CHECK_TS
+        now = time.time()
+        cpu_val = 0.0
+        try:
+            times = proc.cpu_times()
+            if _LAST_CPU_TIMES is not None and _LAST_CPU_CHECK_TS is not None:
+                delta_proc = (
+                    (times.user - _LAST_CPU_TIMES.user)
+                    + (times.system - _LAST_CPU_TIMES.system)
+                )
+                elapsed = max(now - _LAST_CPU_CHECK_TS, 1e-6)
+                cpu_val = (
+                    delta_proc
+                    / (elapsed * max(psutil.cpu_count(logical=True) or 1, 1))
+                    * 100.0
+                )
+            _LAST_CPU_TIMES = times
+            _LAST_CPU_CHECK_TS = now
+        except Exception:
+            cpu_val = proc.cpu_percent(interval=0.1)
+
+        PROCESS_CPU_PERCENT.labels(pid=PID).set(cpu_val)
         PROCESS_RSS_BYTES.labels(pid=PID).set(proc.memory_info().rss)
     except Exception:
         # Metrics collection should never crash the app
