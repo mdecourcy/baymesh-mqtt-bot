@@ -106,7 +106,9 @@ def update_process_metrics() -> None:
         return
     try:
         proc = psutil.Process(PID)
-        PROCESS_CPU_PERCENT.labels(pid=PID).set(proc.cpu_percent())
+        # First call to cpu_percent returns 0; use a small interval to get
+        # a real reading.
+        PROCESS_CPU_PERCENT.labels(pid=PID).set(proc.cpu_percent(interval=0.1))
         PROCESS_RSS_BYTES.labels(pid=PID).set(proc.memory_info().rss)
     except Exception:
         # Metrics collection should never crash the app

@@ -396,8 +396,8 @@
       },
       "targets": [
         {
-          "expr": "sum by (source, level) (count_over_time(({job=~\"systemd-journal|meshtastic-files\"} | level=~\"err|error|crit|alert|emerg\")[${__interval}]))",
-          "legendFormat": "{{source}} {{level}}",
+          "expr": "sum by (level) (count_over_time(({job=\"systemd-journal\"} | level=~\"err|error|crit|alert|emerg\")[${__interval}]))",
+          "legendFormat": "{{level}}",
           "refId": "A"
         }
       ],
@@ -423,7 +423,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (logger) (count_over_time(({job=~\"systemd-journal|meshtastic-files\"} | regexp \"^[^|]+ \\\\| (?P<level>[^|]+) \\\\| (?P<logger>[^|]+) \\\\|\" | level=~\"err|error|crit|alert|emerg\")[${__interval}]))",
+          "expr": "sum by (logger) (count_over_time(({job=\"systemd-journal\"} | regexp \"^[^|]+ \\\\| (?P<level>[^|]+) \\\\| (?P<logger>[^|]+) \\\\|\" | level=~\"err|error|crit|alert|emerg\")[${__interval}]))",
           "legendFormat": "{{logger}}",
           "refId": "A"
         }
@@ -447,11 +447,11 @@
       },
       "targets": [
         {
-          "expr": "{job=~\"systemd-journal|meshtastic-files\"}",
+          "expr": "{job=\"systemd-journal\"}",
           "refId": "A"
         }
       ],
-      "title": "Service Logs (Loki: journald + files)",
+      "title": "Service Logs (Loki: journald)",
       "type": "logs"
     }
   ],
