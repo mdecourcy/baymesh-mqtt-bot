@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: meshtastic-bot
+    metrics_path: /metrics
+    static_configs:
+      # Bot runs on the host; Prometheus runs in Docker. Resolve host via
+      # host-gateway mapping (see docker-compose.observability.yml).
+      - targets: ["host.docker.internal:8000"]
+
