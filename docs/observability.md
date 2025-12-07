@@ -14,11 +14,11 @@
 
 ```
 cd observability
-docker compose -f docker-compose.observability.yml up -d
+GRAFANA_PORT=3300 docker compose -f docker-compose.observability.yml up -d
 ```
 
 Prometheus: http://localhost:9090  
-Grafana: http://localhost:3000 (admin / admin)
+Grafana: http://localhost:${GRAFANA_PORT:-3000} (admin / admin)  
 Loki (logs backend): http://localhost:3100
 
 ### Prometheus target
