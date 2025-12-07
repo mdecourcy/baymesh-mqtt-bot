@@ -137,9 +137,29 @@ class SubscriptionService:
             ) from exc
 
     def _get_user_by_mesh_id(self, user_mesh_id: int):
+        """
+        Locate a user by mesh/user id with fallbacks:
+        - user_id match
+        - primary key match (some command packets provide PK)
+        - mesh_id string match (hex-formatted node id)
+        """
+
+        # Direct user_id lookup
         user = self.user_repo.get_by_user_id(user_mesh_id)
-        if not user:
-            raise SubscriptionError(
-                f"User with mesh id {user_mesh_id} not found"
-            )  # noqa: E501
-        return user
+        if user:
+            return user
+
+        # Some packets provide the DB PK (e.g., 639). Try primary key.
+        user = self.user_repo.get_by_id(user_mesh_id)
+        if user:
+            return user
+
+        # Try hex string match against mesh_id column
+        hex_id = f"{user_mesh_id:08x}"
+        user = self.user_repo.get_by_mesh_id(hex_id)
+        if user:
+            return user
+
+        raise SubscriptionError(
+            f"User with mesh id {user_mesh_id} not found"
+        )  # noqa: E501

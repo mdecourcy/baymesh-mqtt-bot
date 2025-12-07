@@ -59,6 +59,16 @@ class UserRepository(BaseRepository):
         except Exception as exc:
             self._handle_exception("get user by user_id", exc)
 
+    def get_by_mesh_id(self, mesh_id: str) -> Optional[User]:
+        """Fetch user by stored mesh_id string."""
+
+        self.logger.debug("Fetching user by mesh_id=%s", mesh_id)
+        try:
+            stmt = select(User).where(User.mesh_id == mesh_id)
+            return self.session.execute(stmt).scalar_one_or_none()
+        except Exception as exc:
+            self._handle_exception("get user by mesh_id", exc)
+
     def get_or_create(
         self, user_id: int, username: str, mesh_id: Optional[str]
     ) -> User:
