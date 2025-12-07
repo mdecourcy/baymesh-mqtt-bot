@@ -14,6 +14,7 @@ scrape_configs:
       max_age: 12h
       labels:
         job: systemd-journal
+        source: journal
     relabel_configs:
       - source_labels: ["__journal__systemd_unit"]
         target_label: "systemd_unit"
@@ -25,6 +26,7 @@ scrape_configs:
       - targets: [localhost]
         labels:
           job: meshtastic-files
+          source: file
           host: host.docker.internal
           __path__: /var/log/meshtastic/meshtastic_stats.log*
 
