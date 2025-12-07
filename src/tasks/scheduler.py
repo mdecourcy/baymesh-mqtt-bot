@@ -4,7 +4,7 @@ Scheduler manager for daily subscription jobs.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -41,6 +41,9 @@ class SchedulerManager:
         inactivity_threshold_minutes: int = 60,
         inactivity_check_interval_minutes: int = 15,
         inactivity_alert_channel: int = 0,
+        low_gateway_threshold: int = 3,
+        low_gateway_lookback_minutes: int = 15,
+        low_gateway_check_interval_minutes: int = 5,
     ) -> None:
         self._subscription_service = subscription_service
         self._stats_service = stats_service
@@ -62,6 +65,11 @@ class SchedulerManager:
         )  # Track which routers we've already alerted on  # noqa: E501
         self._scheduler: Optional[BackgroundScheduler] = None
         self.logger = get_logger(self.__class__.__name__)
+        self._low_gateway_threshold = low_gateway_threshold
+        self._low_gateway_lookback_minutes = low_gateway_lookback_minutes
+        self._low_gateway_check_interval_minutes = (
+            low_gateway_check_interval_minutes
+        )
 
     def start(self) -> None:
         """Start the background scheduler and register jobs."""
@@ -125,6 +133,20 @@ class SchedulerManager:
                 self._inactivity_alert_channel,
             )
 
+        # Low gateway alerts for recent messages
+        self._scheduler.add_job(
+            self.send_low_gateway_alerts,
+            "interval",
+            minutes=self._low_gateway_check_interval_minutes,
+            name="low_gateway_alerts",
+        )
+        self.logger.info(
+            "Low gateway alert job scheduled every %d minutes (threshold=%d, lookback=%d minutes)",  # noqa: E501
+            self._low_gateway_check_interval_minutes,
+            self._low_gateway_threshold,
+            self._low_gateway_lookback_minutes,
+        )
+
         self._scheduler.start()
 
     def stop(self) -> None:
@@ -141,7 +163,12 @@ class SchedulerManager:
         """
 
         self.logger.info("Starting daily report job at %s", datetime.utcnow())
-        db, stats_service, subscription_service = self._build_fresh_services()
+        (
+            db,
+            message_repo,
+            stats_service,
+            subscription_service,
+        ) = self._build_fresh_services()
         try:
             stats = stats_service.get_today_stats()
         except Exception:  # pragma: no cover - defensive
@@ -215,7 +242,7 @@ class SchedulerManager:
         """
         self.logger.info("Starting daily broadcast at %s", datetime.utcnow())
 
-        db, stats_service, _ = self._build_fresh_services()
+        db, _, stats_service, _ = self._build_fresh_services()
         try:
             stats = stats_service.get_last_24h_stats()
         except Exception:
@@ -287,6 +314,86 @@ class SchedulerManager:
         )
 
         db.close()
+
+    def send_low_gateway_alerts(self) -> None:
+        """
+        Alert subscribed users if their most recent message was seen by too few
+        gateways within the recent lookback window.
+        """
+
+        self.logger.info("Running low gateway alert job")
+        (
+            db,
+            message_repo,
+            _,
+            subscription_service,
+        ) = self._build_fresh_services()
+        total_sent = 0
+
+        try:
+            subscribers = subscription_service.get_subscribers_by_type(
+                SubscriptionType.LOW_GATEWAY_ALERT.value
+            )
+            if not subscribers:
+                return
+
+            cutoff = datetime.utcnow() - timedelta(
+                minutes=self._low_gateway_lookback_minutes
+            )
+
+            for sub in subscribers:
+                user = sub.user
+                if not user:
+                    continue
+                message = message_repo.get_last_for_user(user.id)
+                if not message:
+                    continue
+                if message.timestamp < cutoff:
+                    continue
+                if message.low_gateway_alert_sent:
+                    continue
+                if message.gateway_count >= self._low_gateway_threshold:
+                    continue
+
+                alert = (
+                    "⚠️ Low gateway delivery detected.\n"
+                    "Last message reached "
+                    f"{message.gateway_count} gateway(s);\n"
+                    "Threshold is "
+                    f"{self._low_gateway_threshold}.\n"
+                    "You may need to resend."
+                )
+
+                try:
+                    sent = self._meshtastic_service.send_message(
+                        user.user_id, alert
+                    )
+                except Exception:
+                    self.logger.error(
+                        "Failed to send low-gateway alert to user %s",
+                        user.user_id,
+                        exc_info=True,
+                    )
+                    continue
+
+                if sent:
+                    total_sent += 1
+                    try:
+                        message_repo.mark_low_gateway_alert_sent(message)
+                    except Exception:
+                        self.logger.error(
+                            "Failed to mark low-gateway alert sent for message %s",  # noqa: E501
+                            message.id,
+                            exc_info=True,
+                        )
+
+        except Exception:
+            self.logger.error("Low gateway alert job failed", exc_info=True)
+        finally:
+            db.close()
+            self.logger.info(
+                "Low gateway alert job complete; sent=%s", total_sent
+            )
 
     def _format_broadcast_message(self, stats: dict) -> str:
         """Format daily stats into a broadcast message."""
@@ -433,7 +540,12 @@ class SchedulerManager:
 
     def _build_fresh_services(
         self,
-    ) -> tuple[SessionLocal, StatsService, SubscriptionService]:
+    ) -> tuple[
+        SessionLocal,
+        MessageRepository,
+        StatsService,
+        SubscriptionService,
+    ]:
         """
         Create a fresh DB session and service instances for each scheduled job.
 
@@ -450,7 +562,7 @@ class SchedulerManager:
             subscription_service = SubscriptionService(
                 subscription_repo, user_repo, stats_service
             )
-            return db, stats_service, subscription_service
+            return db, message_repo, stats_service, subscription_service
         except Exception:
             db.close()
             raise

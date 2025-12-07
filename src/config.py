@@ -104,6 +104,10 @@ class Settings:
     router_inactivity_check_interval_minutes: int
     router_inactivity_alert_channel: int
 
+    low_gateway_threshold: int
+    low_gateway_lookback_minutes: int
+    low_gateway_check_interval_minutes: int
+
 
 def _build_settings() -> Settings:
     return Settings(
@@ -188,6 +192,21 @@ def _build_settings() -> Settings:
             default=0,
             min_value=0,
             max_value=7,
+        ),
+        low_gateway_threshold=_get_int(
+            "LOW_GATEWAY_THRESHOLD", default=3, min_value=1, max_value=50
+        ),
+        low_gateway_lookback_minutes=_get_int(
+            "LOW_GATEWAY_LOOKBACK_MINUTES",
+            default=15,
+            min_value=1,
+            max_value=1440,
+        ),
+        low_gateway_check_interval_minutes=_get_int(
+            "LOW_GATEWAY_CHECK_INTERVAL_MINUTES",
+            default=5,
+            min_value=1,
+            max_value=60,
         ),
     )
 

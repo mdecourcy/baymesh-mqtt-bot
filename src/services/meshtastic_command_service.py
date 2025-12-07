@@ -492,9 +492,17 @@ class MeshtasticCommandService:
     def _handle_subscribe_command(self, user_id: int, command: str) -> str:
         parts = command.split()
         if len(parts) not in {2, 3}:
-            return "Usage: !subscribe daily_low|daily_avg|daily_high"
+            return (
+                "Usage: !subscribe "
+                "daily_low|daily_avg|daily_high|low_gateway_alert"
+            )
         sub_type = parts[-1]
-        if sub_type not in {"daily_low", "daily_avg", "daily_high"}:
+        if sub_type not in {
+            "daily_low",
+            "daily_avg",
+            "daily_high",
+            "low_gateway_alert",
+        }:
             return "Invalid subscription type."
         self.subscription_service.subscribe(user_id, sub_type)
         return f"✅ Subscribed to {sub_type}."
@@ -534,7 +542,7 @@ class MeshtasticCommandService:
             "!stats today\n"
             "!stats today detailed\n"
             "!stats status\n"
-            "!subscribe daily_low|daily_avg|daily_high\n"
+            "!subscribe daily_low|daily_avg|daily_high|low_gateway_alert\n"
             "!unsubscribe\n"
             "!my_subscriptions"
         )

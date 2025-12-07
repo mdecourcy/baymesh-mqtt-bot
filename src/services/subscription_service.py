@@ -116,6 +116,11 @@ class SubscriptionService:
             return f"🔴 Peak gateways today: {max_gateways} (from {count} messages)"  # noqa: E501
         if sub_type == SubscriptionType.DAILY_LOW:
             return f"🔵 Minimum gateways today: {min_gateways} (from {count} messages)"  # noqa: E501
+        if sub_type == SubscriptionType.LOW_GATEWAY_ALERT:
+            return (
+                "🔔 Low gateway alert subscriptions are event-based and "
+                "do not include a daily summary."
+            )
         return f"🟡 Average gateways today: {avg_gateways:.1f} (from {count} messages)"  # noqa: E501
 
     def _validate_subscription_type(

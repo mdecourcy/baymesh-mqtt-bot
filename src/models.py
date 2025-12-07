@@ -34,6 +34,7 @@ class SubscriptionType(str, Enum):
     DAILY_LOW = "daily_low"
     DAILY_AVG = "daily_avg"
     DAILY_HIGH = "daily_high"
+    LOW_GATEWAY_ALERT = "low_gateway_alert"
 
 
 class MetricType(str, Enum):
@@ -98,6 +99,9 @@ class Message(Base):
     rssi: Mapped[int | None] = mapped_column(Integer, nullable=True)
     snr: Mapped[float | None] = mapped_column(Float, nullable=True)
     payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    low_gateway_alert_sent: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=utcnow, nullable=False
     )

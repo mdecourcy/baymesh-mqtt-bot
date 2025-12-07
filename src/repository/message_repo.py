@@ -192,6 +192,17 @@ class MessageRepository(BaseRepository):
         messages = self.get_last_n_for_user(user_id, 1)
         return messages[0] if messages else None
 
+    def mark_low_gateway_alert_sent(self, message: Message) -> None:
+        """Mark a message as having sent a low-gateway alert."""
+
+        try:
+            message.low_gateway_alert_sent = True
+            self.session.add(message)
+            self.session.commit()
+        except Exception as exc:
+            self.session.rollback()
+            self._handle_exception("mark low gateway alert sent", exc)
+
     def get_last_n_for_user_with_gateways(
         self, user_id: int, n: int
     ) -> List[Message]:
