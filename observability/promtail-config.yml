@@ -20,3 +20,11 @@ scrape_configs:
       - source_labels: ["__journal__hostname"]
         target_label: "host"
 
+  - job_name: meshtastic-files
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: meshtastic-files
+          host: host.docker.internal
+          __path__: /var/log/meshtastic/meshtastic_stats.log*
+
