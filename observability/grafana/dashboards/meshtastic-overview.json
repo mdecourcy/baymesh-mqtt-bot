@@ -447,11 +447,11 @@
       },
       "targets": [
         {
-          "expr": "{job=~\"systemd-journal|meshtastic-files\", systemd_unit=\"meshtastic-stats-bot.service\"}",
+          "expr": "{job=~\"systemd-journal|meshtastic-files\"}",
           "refId": "A"
         }
       ],
-      "title": "Service Logs (Loki)",
+      "title": "Service Logs (Loki: journald + files)",
       "type": "logs"
     }
   ],
