@@ -154,7 +154,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[$__rate_interval]))",
           "legendFormat": "5xx rps",
           "refId": "A"
         }
@@ -189,12 +189,12 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le)(rate(http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le)(rate(http_request_duration_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.50, sum by (le)(rate(http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.50, sum by (le)(rate(http_request_duration_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p50",
           "refId": "B"
         }
@@ -224,7 +224,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (path)",
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[$__rate_interval])) by (path)",
           "legendFormat": "{{path}}",
           "refId": "A"
         }
@@ -251,7 +251,7 @@
       },
       "targets": [
         {
-          "expr": "increase(http_exceptions_total[5m])",
+          "expr": "increase(http_exceptions_total[$__interval])",
           "legendFormat": "exceptions (5m)",
           "refId": "A"
         }
@@ -306,7 +306,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (status) (rate(http_requests_total[5m]))",
+          "expr": "sum by (status) (rate(http_requests_total[$__rate_interval]))",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -334,7 +334,7 @@
       },
       "targets": [
         {
-          "expr": "topk(5, sum by (path) (rate(http_requests_total[5m])))",
+          "expr": "topk(5, sum by (path) (rate(http_requests_total[$__rate_interval])))",
           "legendFormat": "{{path}}",
           "refId": "A"
         }
@@ -369,7 +369,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, path) (rate(http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, path) (rate(http_request_duration_seconds_bucket[$__rate_interval])))",
           "legendFormat": "{{path}} p95",
           "refId": "A"
         }
@@ -396,7 +396,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (source, level) (count_over_time(({job=~\"systemd-journal|meshtastic-files\"} | level=~\"err|error|crit|alert|emerg\")[5m]))",
+          "expr": "sum by (source, level) (count_over_time(({job=~\"systemd-journal|meshtastic-files\"} | level=~\"err|error|crit|alert|emerg\")[ $__interval]))",
           "legendFormat": "{{source}} {{level}}",
           "refId": "A"
         }
@@ -423,7 +423,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (logger) (count_over_time(({job=~\"systemd-journal|meshtastic-files\"} | regexp \"^[^|]+ \\\\| (?P<level>[^|]+) \\\\| (?P<logger>[^|]+) \\\\|\" | level=~\"err|error|crit|alert|emerg\")[5m]))",
+          "expr": "sum by (logger) (count_over_time(({job=~\"systemd-journal|meshtastic-files\"} | regexp \"^[^|]+ \\\\| (?P<level>[^|]+) \\\\| (?P<logger>[^|]+) \\\\|\" | level=~\"err|error|crit|alert|emerg\")[ $__interval]))",
           "legendFormat": "{{logger}}",
           "refId": "A"
         }
