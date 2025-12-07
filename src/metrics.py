@@ -115,9 +115,8 @@ def update_process_metrics() -> None:
         try:
             times = proc.cpu_times()
             if _LAST_CPU_TIMES is not None and _LAST_CPU_CHECK_TS is not None:
-                delta_proc = (
-                    (times.user - _LAST_CPU_TIMES.user)
-                    + (times.system - _LAST_CPU_TIMES.system)
+                delta_proc = (times.user - _LAST_CPU_TIMES.user) + (
+                    times.system - _LAST_CPU_TIMES.system
                 )
                 elapsed = max(now - _LAST_CPU_CHECK_TS, 1e-6)
                 cpu_val = (
