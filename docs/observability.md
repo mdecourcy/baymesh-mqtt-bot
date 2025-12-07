@@ -22,9 +22,10 @@ Grafana: http://localhost:3000 (admin / admin)
 
 ### Prometheus target
 
-- Default target: `host.docker.internal:8000`
-- On Linux, change to your host IP or server hostname in
-  `observability/prometheus.yml`.
+- Default target: `127.0.0.1:8000` (bot runs bare metal on the host).
+- If Prometheus runs in Docker, ensure `host.docker.internal` (or host IP)
+  resolves inside the container—`extra_hosts: ["host.docker.internal:host-gateway"]`
+  is already set in the compose file.
 
 ### Grafana setup
 
