@@ -155,8 +155,24 @@ class MeshtasticCommandService:
                     timeout=5
                 ):  # noqa: E501
                     # Periodically wake up so we can respond to stop() even if
-                    # no reconnect events are triggered.
-                    pass
+                    # no reconnect events are triggered. Also perform a light
+                    # health check on the TCP socket; if the socket has closed
+                    # (e.g., BrokenPipe), trigger a reconnect so command
+                    # handling recovers automatically.
+                    try:
+                        stream = getattr(self._interface, "stream", None)
+                        sock = getattr(stream, "sock", None)
+                        fileno = sock.fileno() if sock else None
+                        if fileno == -1:
+                            self._schedule_reconnect(
+                                "Meshtastic socket closed (fileno=-1)"
+                            )
+                    except Exception:
+                        # Do not break the loop on inspection errors; best
+                        # effort only.
+                        self.logger.debug(
+                            "Socket health check failed", exc_info=True
+                        )
             except Exception as exc:  # pragma: no cover - hardware dependent
                 self._last_error = str(exc)
                 self._last_error_at = datetime.utcnow()
