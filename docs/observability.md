@@ -23,10 +23,10 @@ Loki (logs backend): http://localhost:3100
 
 ### Prometheus target
 
-- Default target: `127.0.0.1:8000` (bot runs bare metal on the host).
-- If Prometheus runs in Docker, ensure `host.docker.internal` (or host IP)
-  resolves inside the container—`extra_hosts: ["host.docker.internal:host-gateway"]`
-  is already set in the compose file.
+- Default target: `host.docker.internal:8000` (bot on host, Prometheus in Docker).
+- `extra_hosts: ["host.docker.internal:host-gateway"]` is set in compose so the
+  container can reach the host. On Linux without host-gateway, replace with your
+  host IP (e.g., `172.17.0.1:8000`).
 
 ### Logs ingestion (systemd journal)
 
