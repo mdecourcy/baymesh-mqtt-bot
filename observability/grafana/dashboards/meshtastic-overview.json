@@ -406,7 +406,34 @@
     },
     {
       "datasource": "Loki",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 32 },
+      "id": 14,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (logger) (count_over_time(({job=~\"systemd-journal|meshtastic-files\"} | regexp \"^[^|]+ \\\\| (?P<level>[^|]+) \\\\| (?P<logger>[^|]+) \\\\|\" | level=~\"err|error|crit|alert|emerg\")[5m]))",
+          "legendFormat": "{{logger}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Errors by Logger (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Loki",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 38 },
       "id": 13,
       "options": {
         "dedupStrategy": "none",
