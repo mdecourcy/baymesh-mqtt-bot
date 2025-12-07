@@ -9,6 +9,7 @@ import os
 from fastapi import Response
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
@@ -21,11 +22,13 @@ except Exception:  # pragma: no cover - optional dependency
     psutil = None  # type: ignore
 
 PID = os.getpid()
+REGISTRY = CollectorRegistry()
 
 REQUESTS = Counter(
     "http_requests_total",
     "Total HTTP requests",
     ["method", "path", "status"],
+    registry=REGISTRY,
 )
 
 REQUEST_DURATION = Histogram(
@@ -45,22 +48,27 @@ REQUEST_DURATION = Histogram(
         5,
         10,
     ),
+    registry=REGISTRY,
 )
 
 EXCEPTIONS = Counter(
-    "http_exceptions_total", "Total unhandled exceptions in HTTP handlers"
+    "http_exceptions_total",
+    "Total unhandled exceptions in HTTP handlers",
+    registry=REGISTRY,
 )
 
 PROCESS_CPU_PERCENT = Gauge(
-    "process_cpu_percent",
+    "app_process_cpu_percent",
     "Process CPU percent (psutil, averaged since last call)",
     ["pid"],
+    registry=REGISTRY,
 )
 
 PROCESS_RSS_BYTES = Gauge(
-    "process_resident_memory_bytes",
+    "app_process_resident_memory_bytes",
     "Process resident set size in bytes",
     ["pid"],
+    registry=REGISTRY,
 )
 
 
@@ -109,4 +117,6 @@ def metrics_response() -> Response:
     """Return the current metrics in Prometheus exposition format."""
 
     update_process_metrics()
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return Response(
+        content=generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST
+    )
