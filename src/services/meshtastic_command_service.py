@@ -599,7 +599,26 @@ class MeshtasticCommandService:
                         if raw_destination is not None
                         else destination_id
                     )
-                    self._interface.sendText(chunk, destinationId=dest)
+                    try:
+                        self._interface.sendText(chunk, destinationId=dest)
+                    except BrokenPipeError as exc:  # pragma: no cover
+                        self.logger.error(
+                            "Broken pipe sending response; reconnecting",
+                            exc_info=True,
+                        )
+                        self._schedule_reconnect(
+                            "Broken pipe sending response", exc
+                        )
+                        return
+                    except Exception as exc:  # pragma: no cover
+                        self.logger.error(
+                            "Failed to send Meshtastic response",
+                            exc_info=True,
+                        )
+                        self._schedule_reconnect(
+                            "Failed to send response", exc
+                        )
+                        return
                     # Give the radio some breathing room between chunks. Some
                     # firmwares appear to silently drop back-to-back packets,
                     # so we wait a bit before sending the next one.
@@ -632,7 +651,28 @@ class MeshtasticCommandService:
                         channel_id,
                         len(chunk),
                     )
-                    self._interface.sendText(chunk, destinationId=channel_id)
+                    try:
+                        self._interface.sendText(
+                            chunk, destinationId=channel_id
+                        )
+                    except BrokenPipeError as exc:  # pragma: no cover
+                        self.logger.error(
+                            "Broken pipe posting stats; reconnecting",
+                            exc_info=True,
+                        )
+                        self._schedule_reconnect(
+                            "Broken pipe posting stats", exc
+                        )
+                        return
+                    except Exception as exc:  # pragma: no cover
+                        self.logger.warning(
+                            "Failed to post stats message to channel %s",
+                            channel_id,
+                            exc_info=True,  # noqa: E501
+                        )
+                        msg = f"Failed to post stats to channel {channel_id}"
+                        self._schedule_reconnect(msg, exc)
+                        return
                 else:
                     self.logger.info(
                         "Posting stats to channel %s via service (len=%s)",
