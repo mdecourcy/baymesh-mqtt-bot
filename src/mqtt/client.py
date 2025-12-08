@@ -313,15 +313,12 @@ class MQTTClient:
         self._connected = False
         if rc == mqtt.MQTT_ERR_SUCCESS:
             self.logger.info("Disconnected from MQTT broker")
-        else:
-            self.logger.warning(
-                "Unexpected MQTT disconnect (rc=%s). Attempting reconnect.", rc
-            )
-            self._reconnect_count += 1
-            try:
-                client.reconnect()
-            except Exception:
-                self.logger.error("Reconnection attempt failed", exc_info=True)
+            return
+
+        self.logger.warning(
+            "Unexpected MQTT disconnect (rc=%s). Will reconnect in loop.", rc
+        )
+        self._reconnect_count += 1
 
     def _on_message(self, client, userdata, msg):  # type: ignore[override]
         """
