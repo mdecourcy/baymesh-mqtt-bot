@@ -284,7 +284,8 @@ class ProtobufMessageParser:
         try:
             message.ParseFromString(payload)
         except Exception as exc:  # pragma: no cover - defensive
-            self.logger.warning(
+            # Malformed payload; drop quietly to avoid log spam
+            self.logger.debug(
                 "Failed to parse protobuf payload: %s", exc, exc_info=True
             )
             return None
