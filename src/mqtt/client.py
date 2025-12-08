@@ -419,6 +419,8 @@ class MQTTClient:
         NODEINFO packets contain user details like long_name, short_name, hw_model, and role.  # noqa: E501
         We extract this and update the user record in the database.
         """
+        session = self._session_factory()
+        user_repo = UserRepository(session)
         try:
             sender_id = parsed.get("from_id")
             sender_name = parsed.get("sender_name")
@@ -427,10 +429,10 @@ class MQTTClient:
             if not sender_id:
                 return
 
-            # Get or create user
-            user = self._user_repo.get_by_user_id(sender_id)
+            user = user_repo.get_by_user_id(sender_id)
+
             if not user:
-                user = self._user_repo.create(
+                user = user_repo.create(
                     sender_id, sender_name or f"node-{sender_id}", None, role
                 )
                 self.logger.info(
@@ -440,37 +442,48 @@ class MQTTClient:
                     role,
                 )
             else:
-                # Update username if we got a real name (not a fallback)
+                updated = False
                 if (
                     sender_name
                     and sender_name != user.username
                     and not sender_name.startswith("node-")
                 ):
                     old_name = user.username
-                    user = self._user_repo.update_username(
-                        sender_id, sender_name
-                    )
+                    user = user_repo.update_username(sender_id, sender_name)
                     self.logger.info(
                         "Updated user name: %s → %s (%s)",
                         old_name,
                         sender_name,
                         sender_id,
                     )
+                    updated = True
 
-                # Update role if it changed
                 if role is not None and role != user.role:
-                    user = self._user_repo.update_role(sender_id, role)
+                    user = user_repo.update_role(sender_id, role)
                     self.logger.info(
                         "Updated user role: %s (%s) role=%s",
                         sender_name,
                         sender_id,
                         role,
                     )
+                    updated = True
+
+                if not updated:
+                    # Nothing to commit
+                    session.rollback()
+                    return
+
+            # Ensure changes are persisted if not already committed inside repo
+            if session.is_active:
+                session.commit()
 
         except Exception:
+            session.rollback()
             self.logger.error(
                 "Failed to process NODEINFO packet", exc_info=True
             )
+        finally:
+            session.close()
 
     def _process_queue(self) -> None:
         """
