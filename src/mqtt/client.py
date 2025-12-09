@@ -4,6 +4,7 @@ MQTT client that consumes Meshtastic protobuf messages.
 
 from __future__ import annotations
 
+import random
 import ssl
 import threading
 import time
@@ -59,6 +60,7 @@ class MQTTClient:
         self._running = False
         self._reconnect_count = 0
         self._connected_at: Optional[datetime] = None
+        self._reconnect_failures = 0
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -189,6 +191,7 @@ class MQTTClient:
                         rc = self._client.reconnect()
                         if rc == mqtt.MQTT_ERR_SUCCESS:
                             self.logger.info("MQTT reconnect successful")
+                            self._reconnect_failures = 0
                             # Service socket once to process CONNACK and
                             # trigger on_connect next loop.
                             try:
@@ -204,13 +207,45 @@ class MQTTClient:
                         self.logger.warning(
                             "MQTT reconnect failed with code %s", rc
                         )
+                        self._reconnect_failures += 1
                     except Exception:
                         self.logger.error(
                             "MQTT reconnect attempt raised", exc_info=True
                         )
+                        self._reconnect_failures += 1
+
+                    if self._reconnect_failures >= 5:
+                        # Rebuild Paho client after repeated failures
+                        self.logger.warning(
+                            "Rebuilding MQTT client after %s failures",
+                            self._reconnect_failures,
+                        )
+                        try:
+                            try:
+                                self._client.disconnect()
+                            except Exception:
+                                pass
+                            self._client = self._build_client()
+                            # Attempt immediate connect with fresh client
+                            if self.connect():
+                                self._reconnect_failures = 0
+                                reconnect_delay = 1
+                                time.sleep(0.1)
+                                continue
+                        except Exception:
+                            self.logger.error(
+                                "Failed to rebuild MQTT client", exc_info=True
+                            )
+                        self._reconnect_failures = 0
+                        reconnect_delay = 1
+
                     time.sleep(reconnect_delay)
+                    # Exponential backoff with a small jitter
                     reconnect_delay = min(
                         reconnect_delay * 2, max_reconnect_delay
+                    )
+                    reconnect_delay += random.uniform(
+                        0, min(1.0, reconnect_delay / 2)
                     )
                     continue
 
