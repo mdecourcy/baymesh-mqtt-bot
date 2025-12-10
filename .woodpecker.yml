@@ -89,8 +89,9 @@ steps:
       - set -ex
       # Deploy latest code to the baymesh-mqtt-bot host, rebuild dashboard, and restart systemd service
       - |
-        ssh -i /root/.ssh/woodpecker-deploy -o StrictHostKeyChecking=no root@192.168.8.114 << 'EOF'
+        ssh -i /root/.ssh/woodpecker-deploy -o StrictHostKeyChecking=no root@192.168.8.114 << EOF
         set -ex
+        export INFLUX_TOKEN="${INFLUX_TOKEN}"
         cd /opt/baymesh-mqtt-bot
         git pull --ff-only
         # Ensure Python deps are current for migrations
