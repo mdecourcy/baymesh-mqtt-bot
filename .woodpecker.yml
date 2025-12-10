@@ -85,7 +85,6 @@ steps:
   # Deploy to baymesh-mqtt-bot host via SSH (bare-metal, no Docker)
   - name: deploy-to-pi
     image: /bin/sh
-    secrets: [INFLUX_TOKEN]
     commands:
       - set -ex
       # Deploy latest code to the baymesh-mqtt-bot host, rebuild dashboard, and restart systemd service
@@ -125,7 +124,7 @@ steps:
         # Telegraf to forward Prometheus metrics to remote Influx
         docker rm -f meshtastic-telegraf || true
         if [ -n "${INFLUX_TOKEN}" ]; then
-          HOSTNAME=$(hostname) docker run -d \
+          HOSTNAME=$(hostname) INFLUX_TOKEN="${INFLUX_TOKEN}" docker run -d \
             --name meshtastic-telegraf \
             --restart unless-stopped \
             --network host \
@@ -138,6 +137,9 @@ steps:
         fi
         systemctl restart meshtastic-stats-bot.service
         EOF
+    environment:
+      INFLUX_TOKEN:
+        from_secret: INFLUX_TOKEN
     when:
       event: [push]
       branch: [master, main]
