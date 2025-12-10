@@ -64,7 +64,7 @@ skip running `docker-compose.observability.yml`.
 
 - Remote Influx endpoint: `192.168.8.141`
 - Org: `network`
-- Bucket: `3KtHrr1-Piap5eTh4zxjPA2QW6KP7gVW2k4NSjPWLejim2jQJrunwZAR17yIygqsvlxlLPodQX24utW8YpANfg==`
+- Bucket: `mqtt-bot`
 - The bot still exposes Prometheus metrics at `/metrics`. To forward them into
   Influx, run a collector/bridge (e.g., Telegraf with the Prometheus input and
   Influx output) pointed at the bot’s `/metrics` endpoint and the Influx host
