@@ -10,3 +10,4 @@ echo "Fetching bot statistics for last ${DAYS} days..."
 curl -s "${BASE_URL}/bot/stats?days=${DAYS}" | jq .
 
 
+

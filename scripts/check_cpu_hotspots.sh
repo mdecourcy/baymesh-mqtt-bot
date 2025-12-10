@@ -22,3 +22,4 @@ echo ""
 echo "=== Memory usage ==="
 ssh $BOT_HOST "ps aux | grep 'python.*main.py' | grep -v grep | awk '{print \"RSS:\", \$6/1024, \"MB\", \"VSZ:\", \$5/1024, \"MB\"}'"
 
+

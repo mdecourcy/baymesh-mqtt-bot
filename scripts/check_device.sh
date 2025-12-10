@@ -53,3 +53,4 @@ echo "6. Try connecting via USB instead: MESHTASTIC_CONNECTION_URL=/dev/ttyUSB0"
 echo ""
 
 
+

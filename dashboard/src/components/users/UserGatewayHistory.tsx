@@ -60,3 +60,4 @@ export const UserGatewayHistory = ({ gateways, loading, error }: Props) => (
   </Card>
 );
 
+

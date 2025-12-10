@@ -27,3 +27,4 @@ def downgrade() -> None:
     op.drop_column("messages", "hop_limit")
     op.drop_column("messages", "hop_start")
 
+

@@ -40,3 +40,4 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Service restarted!"
 fi
 
+

@@ -10,3 +10,4 @@ echo "Fetching last ${LIMIT} bot commands..."
 curl -s "${BASE_URL}/bot/commands/recent?limit=${LIMIT}" | jq .
 
 
+

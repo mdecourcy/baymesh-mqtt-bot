@@ -33,3 +33,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("messages", "low_gateway_alert_sent")
 
+

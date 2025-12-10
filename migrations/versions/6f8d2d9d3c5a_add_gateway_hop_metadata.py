@@ -33,3 +33,4 @@ def downgrade() -> None:
     op.drop_column("message_gateways", "hops_travelled")
     op.drop_column("message_gateways", "hop_limit_at_receipt")
 
+

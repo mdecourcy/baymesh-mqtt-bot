@@ -97,3 +97,4 @@ class StatisticsCacheRepository(BaseRepository):
             self.session.commit()
         except Exception as exc:
             self._handle_exception("delete statistics cache entries", exc)
+

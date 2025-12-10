@@ -8,3 +8,4 @@ echo "Fetching log file statistics..."
 curl -s "${BASE_URL}/admin/logs" | jq .
 
 
+

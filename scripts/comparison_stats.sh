@@ -8,3 +8,4 @@ echo "Fetching comparison statistics..."
 curl -s "${BASE_URL}/stats/comparisons" | jq .
 
 
+
