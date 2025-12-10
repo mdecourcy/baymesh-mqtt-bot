@@ -106,11 +106,21 @@ steps:
         npm ci
         npm run build
         cd ..
-        # Ensure Docker + compose for observability stack
-        command -v docker >/dev/null 2>&1 || (apt-get update && apt-get install -y docker.io docker-compose-plugin)
+        # Ensure Docker for promtail (remote Loki)
+        command -v docker >/dev/null 2>&1 || (apt-get update && apt-get install -y docker.io)
         systemctl enable --now docker || true
-        # Bring up Prometheus + Grafana from repo config
-        docker compose -f observability/docker-compose.observability.yml up -d
+        # Restart promtail to ship logs to remote Loki
+        docker rm -f meshtastic-promtail || true
+        PROMTAIL_HOSTNAME=$(hostname) docker run -d \
+          --name meshtastic-promtail \
+          --restart unless-stopped \
+          -e PROMTAIL_HOSTNAME \
+          -v /var/log/journal:/var/log/journal:ro \
+          -v /run/log/journal:/run/log/journal:ro \
+          -v /etc/machine-id:/etc/machine-id:ro \
+          -v /var/lib/promtail:/var/lib/promtail \
+          -v /opt/baymesh-mqtt-bot/observability/promtail-config.yml:/etc/promtail/config.yml:ro \
+          grafana/promtail:2.9.4 -config.file=/etc/promtail/config.yml
         systemctl restart meshtastic-stats-bot.service
         EOF
     when:
