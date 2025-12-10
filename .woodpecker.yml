@@ -121,6 +121,20 @@ steps:
           -v /var/lib/promtail:/var/lib/promtail \
           -v /opt/baymesh-mqtt-bot/observability/promtail-config.yml:/etc/promtail/config.yml:ro \
           grafana/promtail:2.9.4 -config.file=/etc/promtail/config.yml
+        # Telegraf to forward Prometheus metrics to remote Influx
+        docker rm -f meshtastic-telegraf || true
+        if [ -n "${INFLUX_TOKEN}" ]; then
+          HOSTNAME=$(hostname) docker run -d \
+            --name meshtastic-telegraf \
+            --restart unless-stopped \
+            --network host \
+            -e INFLUX_TOKEN \
+            -e HOSTNAME \
+            -v /opt/baymesh-mqtt-bot/observability/telegraf.conf:/etc/telegraf/telegraf.conf:ro \
+            telegraf:1.30-alpine
+        else
+          echo "INFLUX_TOKEN not set; skipping telegraf deploy" >&2
+        fi
         systemctl restart meshtastic-stats-bot.service
         EOF
     when:
