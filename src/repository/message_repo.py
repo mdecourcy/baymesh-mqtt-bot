@@ -192,6 +192,37 @@ class MessageRepository(BaseRepository):
         messages = self.get_last_n_for_user(user_id, 1)
         return messages[0] if messages else None
 
+    def get_last_low_gateway_for_user(
+        self,
+        user_id: int,
+        cutoff: datetime,
+        threshold: int,
+    ) -> Optional[Message]:
+        """
+        Retrieve the most recent low-gateway message for a user within cutoff.
+        """
+
+        self.logger.debug(
+            "Fetching last low-gateway message for user_id=%s", user_id
+        )
+        try:
+            stmt = (
+                select(Message)
+                .where(
+                    Message.sender_id == user_id,
+                    Message.timestamp >= cutoff,
+                    Message.gateway_count < threshold,
+                    Message.low_gateway_alert_sent.is_(False),
+                )
+                .order_by(Message.timestamp.desc())
+                .limit(1)
+            )
+            return self.session.execute(stmt).scalar_one_or_none()
+        except Exception as exc:
+            self._handle_exception(
+                "get last low-gateway message for user", exc
+            )
+
     def mark_low_gateway_alert_sent(self, message: Message) -> None:
         """Mark a message as having sent a low-gateway alert."""
 

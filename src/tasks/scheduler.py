@@ -345,14 +345,10 @@ class SchedulerManager:
                 user = sub.user
                 if not user:
                     continue
-                message = message_repo.get_last_for_user(user.id)
+                message = message_repo.get_last_low_gateway_for_user(
+                    user.id, cutoff, self._low_gateway_threshold
+                )
                 if not message:
-                    continue
-                if message.timestamp < cutoff:
-                    continue
-                if message.low_gateway_alert_sent:
-                    continue
-                if message.gateway_count >= self._low_gateway_threshold:
                     continue
 
                 alert = (
