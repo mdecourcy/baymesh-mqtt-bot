@@ -85,6 +85,7 @@ steps:
   # Deploy to baymesh-mqtt-bot host via SSH (bare-metal, no Docker)
   - name: deploy-to-pi
     image: /bin/sh
+    secrets: [INFLUX_TOKEN]
     commands:
       - set -ex
       # Deploy latest code to the baymesh-mqtt-bot host, rebuild dashboard, and restart systemd service
