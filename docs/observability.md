@@ -37,6 +37,39 @@ Loki (logs backend): http://localhost:3100
   - `{job="systemd-journal", systemd_unit="meshtastic-stats-bot.service"}`
   - Add filters for `host` as needed.
 
+## Using remote Loki / Influx instead of the local stack
+
+If you already have central observability, you can point this bot to it and
+skip running `docker-compose.observability.yml`.
+
+### Loki (logs)
+
+- Remote Loki push endpoint: `http://192.168.8.124:3100/loki/api/v1/push`
+- Update `observability/promtail-config.yml` (already set) and set a hostname
+  label so logs stay distinct:
+  ```
+  export PROMTAIL_HOSTNAME=$(hostname)
+  ```
+- Start promtail (via compose or manually):
+  ```
+  cd observability
+  PROMTAIL_HOSTNAME=$(hostname) docker compose -f docker-compose.observability.yml run --rm promtail
+  ```
+  or run promtail directly with the config file.
+- Queries in Grafana/Explore:
+  - `{job="systemd-journal", host="<your-hostname>"}` for journald logs
+  - `{job="meshtastic-files", host="<your-hostname>"}` for file logs
+
+### InfluxDB (metrics)
+
+- Remote Influx endpoint: `192.168.8.141`
+- Org: `network`
+- Bucket: `3KtHrr1-Piap5eTh4zxjPA2QW6KP7gVW2k4NSjPWLejim2jQJrunwZAR17yIygqsvlxlLPodQX24utW8YpANfg==`
+- The bot still exposes Prometheus metrics at `/metrics`. To forward them into
+  Influx, run a collector/bridge (e.g., Telegraf with the Prometheus input and
+  Influx output) pointed at the bot’s `/metrics` endpoint and the Influx host
+  above.
+
 ### Grafana setup
 
 1) Add Prometheus data source: URL `http://prometheus:9090`.  

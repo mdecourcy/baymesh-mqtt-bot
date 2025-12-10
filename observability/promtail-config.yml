@@ -6,7 +6,10 @@ positions:
   filename: /var/lib/promtail/positions.yaml
 
 clients:
-  - url: http://loki:3100/loki/api/v1/push
+  - url: http://192.168.8.124:3100/loki/api/v1/push
+    external_labels:
+      source: meshtastic-bot
+      host: ${PROMTAIL_HOSTNAME}
 
 scrape_configs:
   - job_name: systemd-journal
@@ -27,6 +30,6 @@ scrape_configs:
         labels:
           job: meshtastic-files
           source: file
-          host: host.docker.internal
+          host: ${PROMTAIL_HOSTNAME}
           __path__: /var/log/meshtastic/meshtastic_stats.log*
 
